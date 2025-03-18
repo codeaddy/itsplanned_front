@@ -1,0 +1,44 @@
+# Xcode
+*.xcuserstate
+*.xcworkspace
+*.xcuserdata
+*.xcodeproj/project.xcworkspace/xcuserdata
+*.xcodeproj/xcuserdata
+*.xcodeproj/xcuserdata/*.xcuserdatad
+
+# Build products
+build/
+DerivedData/
+
+# Swift Package Manager
+/.build/
+/Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# SwiftPM
+*.xcodeproj/project.xcworkspace/xcuserdata/*.xcuserdatad
+
+# User-specific files
+*.swp
+*.swo
+*.DS_Store
+*.user
+*.userprefs
+
+# Archive files
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Other
+*.log
+*.tmp
+
+# Environment files
+.env
