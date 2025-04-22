@@ -19,6 +19,7 @@ final class ParticipantsViewModel: ObservableObject {
     @Published var participants: [Participant] = []
     @Published var filteredParticipants: [Participant] = []
     @Published var searchText: String = ""
+    @Published var organizerName: String = ""
     
     let baseURL = "http://localhost:8080"
     
@@ -32,7 +33,34 @@ final class ParticipantsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id}/participants endpoint
+            // First, fetch the event details to get the organizer ID
+            guard let eventUrl = URL(string: "\(baseURL)/events/\(eventId)") else {
+                throw EventDetailError.invalidURL
+            }
+            
+            var eventRequest = URLRequest(url: eventUrl)
+            eventRequest.httpMethod = "GET"
+            eventRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            
+            let (eventData, eventResponse) = try await URLSession.shared.data(for: eventRequest)
+            
+            guard let eventHttpResponse = eventResponse as? HTTPURLResponse else {
+                throw EventDetailError.invalidResponse
+            }
+            
+            // Check if we got a valid response for the event details
+            guard eventHttpResponse.statusCode == 200 else {
+                let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: eventData)
+                throw EventDetailError.apiError(errorResponse?.error ?? "Failed to fetch event details")
+            }
+            
+            // Decode the event details to get the organizer ID
+            let eventResponseObj = try JSONDecoder().decode(APIResponse<EventResponse>.self, from: eventData)
+            guard let event = eventResponseObj.data else {
+                throw EventDetailError.apiError("Failed to parse event data")
+            }
+            
+            // Now fetch the participants list
             guard let url = URL(string: "\(baseURL)/events/\(eventId)/participants") else {
                 throw EventDetailError.invalidURL
             }
@@ -57,16 +85,23 @@ final class ParticipantsViewModel: ObservableObject {
                 // Direct decoding of EventParticipantsResponse for 200 status
                 let participantsResponse = try JSONDecoder().decode(EventParticipantsResponse.self, from: data)
                 
-                // Convert string array to Participant objects
-                self.participants = participantsResponse.participants.map { participantName in
-                    // In a real app, we would parse role and avatar information from the API
-                    // For now, we'll create test data with random roles
-                    let roles = ["Организатор", "Участник", "Гость"]
-                    let randomRole = roles[Int.random(in: 0..<roles.count)]
+                // Unfortunately, the API doesn't give us user IDs along with names in the participants list
+                // So we can't directly match organizerId with participants
+                // As a workaround, we'll assume the organizer is the first participant
+                
+                // Store the name of the organizer (first participant)
+                if !participantsResponse.participants.isEmpty {
+                    self.organizerName = participantsResponse.participants[0]
+                }
+                
+                // Convert string array to Participant objects with proper roles
+                self.participants = participantsResponse.participants.enumerated().map { index, participantName in
+                    // The first participant (index 0) is the organizer
+                    let isOrganizer = index == 0
                     
                     return Participant(
                         name: participantName,
-                        role: randomRole,
+                        role: isOrganizer ? "Организатор" : "Участник",
                         avatar: nil
                     )
                 }
@@ -114,5 +149,6 @@ final class ParticipantsViewModel: ObservableObject {
         
         participants = testParticipants
         filteredParticipants = testParticipants
+        organizerName = "Иван Иванов"
     }
 } 

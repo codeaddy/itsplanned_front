@@ -47,7 +47,7 @@ struct ChatListView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                         .onDelete { indexSet in
-                            viewModel.chatThreads.remove(atOffsets: indexSet)
+                            viewModel.deleteChat(at: indexSet)
                         }
                     }
                     .listStyle(PlainListStyle())
@@ -74,14 +74,20 @@ struct ChatListView: View {
                 }
                 .hidden()
             )
+            .onAppear {
+                // Refresh chat list when the view appears
+                viewModel.loadSavedChats()
+            }
         }
         .enableInjection()
     }
     
     // Create a new chat and navigate to it directly
     private func createAndNavigateToNewChat() {
-        let newChatId = viewModel.createNewChat()
-        selectedChatId = newChatId
+        Task { @MainActor in
+            let newChatId = viewModel.createNewChat()
+            selectedChatId = newChatId
+        }
     }
 }
 
@@ -107,7 +113,11 @@ struct EmptyChatsView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             
-            Button(action: onNewChat) {
+            Button(action: {
+                Task { @MainActor in
+                    onNewChat()
+                }
+            }) {
                 HStack {
                     Image(systemName: "plus")
                     Text("Новый чат")

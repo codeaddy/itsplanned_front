@@ -4,52 +4,6 @@ import OSLog
 
 private let logger = Logger(subsystem: "com.itsplanned", category: "Chat")
 
-// Models for Chat functionality
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let content: String
-    let isFromUser: Bool
-    let timestamp: Date
-    var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: timestamp)
-    }
-}
-
-struct ChatThread: Identifiable {
-    let id = UUID()
-    var title: String
-    var lastMessage: String
-    var lastMessageDate: Date
-    var messages: [ChatMessage]
-    
-    var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "ru_RU")
-        return formatter.string(from: lastMessageDate)
-    }
-    
-    var shortFormattedDate: String {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        if calendar.isDateInToday(lastMessageDate) {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return formatter.string(from: lastMessageDate)
-        } else if calendar.isDateInYesterday(lastMessageDate) {
-            return "Вчера"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "dd.MM.yy"
-            return formatter.string(from: lastMessageDate)
-        }
-    }
-}
-
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published var chatThreads: [ChatThread] = []
@@ -60,7 +14,15 @@ final class ChatViewModel: ObservableObject {
     @Published var errorMessage = ""
     
     init() {
-        loadTestData()
+        loadSavedChats()
+    }
+    
+    func loadSavedChats() {
+        chatThreads = ChatStorageService.shared.loadChatThreads()
+        
+        if chatThreads.isEmpty {
+            loadTestData()
+        }
     }
     
     func sendMessage(threadId: UUID, content: String) {
@@ -68,67 +30,64 @@ final class ChatViewModel: ObservableObject {
             return
         }
         
-        // Create user message
         let userMessage = ChatMessage(
             content: content,
             isFromUser: true,
             timestamp: Date()
         )
         
-        // Add to current messages
         currentMessages.append(userMessage)
         
-        // Update the thread if applicable
         if let index = chatThreads.firstIndex(where: { $0.id == threadId }) {
             chatThreads[index].messages.append(userMessage)
-            updateChatThread(threadId: threadId, lastMessage: content, lastMessageDate: Date())
+            
+            if chatThreads[index].title == "Новый чат" {
+                let firstSentence = content.components(separatedBy: ".").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? content
+                let truncatedTitle = firstSentence.count > 30 ? String(firstSentence.prefix(30)) + "..." : firstSentence
+                updateChatThread(threadId: threadId, title: truncatedTitle, lastMessage: content, lastMessageDate: Date())
+            } else {
+                updateChatThread(threadId: threadId, lastMessage: content, lastMessageDate: Date())
+            }
+            
+            ChatStorageService.shared.saveChatThread(chatThreads[index])
         }
         
-        // Clear the input field
         messageText = ""
         
-        // Simulate AI assistant reply after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            self.simulateAIResponse(threadId: threadId)
-        }
-    }
-    
-    private func simulateAIResponse(threadId: UUID) {
-        let responses = [
-            "Я могу помочь вам организовать мероприятие. Расскажите подробнее о ваших планах.",
-            "Отличная идея! Давайте разработаем план для этого события.",
-            "Для этого типа мероприятия я бы рекомендовал следующие шаги...",
-            "Я могу предложить несколько вариантов. Что вы думаете о...",
-            "Исходя из вашего описания, вот что я могу предложить...",
-            "Это звучит интересно! Какие еще детали вы можете рассказать?",
-            "Я проанализировал ваш запрос и могу предложить оптимальное решение.",
-            "Было бы полезно знать бюджет мероприятия. Это поможет мне дать более точные рекомендации."
-        ]
+        isLoading = true
         
-        // Get random response
-        let aiResponse = responses.randomElement() ?? "Я помогу вам с организацией мероприятия."
-        
-        // Create AI message
-        let aiMessage = ChatMessage(
-            content: aiResponse,
-            isFromUser: false,
-            timestamp: Date()
-        )
-        
-        // Add to current messages
-        currentMessages.append(aiMessage)
-        
-        // Update the thread if applicable
-        if let index = chatThreads.firstIndex(where: { $0.id == threadId }) {
-            chatThreads[index].messages.append(aiMessage)
-            updateChatThread(threadId: threadId, lastMessage: aiResponse, lastMessageDate: Date())
+        Task {
+            do {
+                let aiResponse = try await YandexGPTService.shared.sendChatRequest(messages: currentMessages)
+                
+                let aiMessage = ChatMessage(
+                    content: aiResponse,
+                    isFromUser: false,
+                    timestamp: Date()
+                )
+                
+                currentMessages.append(aiMessage)
+                
+                if let index = chatThreads.firstIndex(where: { $0.id == threadId }) {
+                    chatThreads[index].messages.append(aiMessage)
+                    updateChatThread(threadId: threadId, lastMessage: aiResponse, lastMessageDate: Date())
+                    
+                    ChatStorageService.shared.saveChatThread(chatThreads[index])
+                }
+                
+                isLoading = false
+            } catch {
+                isLoading = false
+                errorMessage = "Не удалось получить ответ: \(error.localizedDescription)"
+                showError = true
+                logger.error("Failed to get AI response: \(error.localizedDescription)")
+            }
         }
     }
     
     func createNewChat() -> UUID {
         let newChatId = UUID()
         
-        // Create initial assistant messages
         let welcomeMessage = ChatMessage(
             content: "Привет! Чем я могу тебе помочь?",
             isFromUser: false,
@@ -136,41 +95,47 @@ final class ChatViewModel: ObservableObject {
         )
         
         let suggestionsMessage = ChatMessage(
-            content: "Давай вместе придумаем самую крутую вечеринку! Расскажи мне о твоих запросах, количестве человек и локации мероприятия",
+            content: "Давай вместе придумаем самую крутую вечеринку! Расскажи мне о твоих запросах, количестве человек и локации мероприятия.",
             isFromUser: false,
             timestamp: Date().addingTimeInterval(1)
         )
         
-        // Create a new chat with default title
         let newChat = ChatThread(
+            id: newChatId,
             title: "Новый чат",
             lastMessage: suggestionsMessage.content,
             lastMessageDate: Date(),
             messages: [welcomeMessage, suggestionsMessage]
         )
         
-        // Add to chat threads
         chatThreads.insert(newChat, at: 0)
         
-        // Set current messages
         currentMessages = newChat.messages
+        
+        ChatStorageService.shared.saveChatThread(newChat)
         
         return newChatId
     }
     
     func loadChat(threadId: UUID) {
-        if let chat = chatThreads.first(where: { $0.id == threadId }) {
+        if let storedChat = ChatStorageService.shared.getChatThread(id: threadId) {
+            if let index = chatThreads.firstIndex(where: { $0.id == threadId }) {
+                chatThreads[index] = storedChat
+            } else {
+                chatThreads.append(storedChat)
+            }
+            currentMessages = storedChat.messages
+        } else if let chat = chatThreads.first(where: { $0.id == threadId }) {
             currentMessages = chat.messages
         }
     }
     
-    // Load test data for previews and initial testing
     func loadTestData() {
         let thread1Messages: [ChatMessage] = [
             ChatMessage(content: "Привет! Чем я могу тебе помочь?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2)),
             ChatMessage(content: "Давай вместе придумаем самую крутую вечеринку! Расскажи мне о твоих запросах, количестве человек и локации мероприятия", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 1)),
             ChatMessage(content: "Я хочу организовать день рождения на 25 человек. Предложи мне различные идеи проведения мероприятия!", isFromUser: true, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 120)),
-            ChatMessage(content: "Вот ваше эссе на 500 слов....", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 240))
+            ChatMessage(content: "Для дня рождения на 25 человек есть множество интересных вариантов!\n\n1. **Тематическая вечеринка**. Выберите тему, которая нравится имениннику: ретро 80-х, Гэтсби, супергерои, Гарри Поттер, кино. Гости могут прийти в соответствующих костюмах, а декор, еда и активности будут поддерживать тематику.\n\n2. **Квест или escape room**. Арендуйте готовый квеструм или организуйте собственный квест на природе или в помещении. Разделите гостей на команды для более динамичного прохождения.\n\n3. **Барбекю или пикник в парке**. Неформальное мероприятие на свежем воздухе с играми, музыкой и вкусной едой.\n\n4. **Аренда банкетного зала с развлекательной программой**. Пригласите ведущего, который организует конкурсы, или музыкальную группу/DJ.\n\n5. **Активный отдых**: боулинг, картинг, пейнтбол, лазертаг или веревочный парк — отличный вариант для любителей движения.\n\n6. **Кулинарный мастер-класс**. Пригласите шеф-повара, который научит гостей готовить интересные блюда, а потом все вместе насладятся результатом.\n\n7. **Творческий мастер-класс**: рисование, гончарное дело, изготовление свечей или других предметов. Гости получат новые навыки и сувениры на память.\n\nЧто из этого больше всего подходит имениннику и вашим гостям?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 240))
         ]
         
         let thread2Messages: [ChatMessage] = [
@@ -186,13 +151,24 @@ final class ChatViewModel: ObservableObject {
         ]
         
         chatThreads = [
-            ChatThread(title: "Организация дня рождения", lastMessage: thread1Messages.last!.content, lastMessageDate: thread1Messages.last!.timestamp, messages: thread1Messages),
-            ChatThread(title: "Корпоратив", lastMessage: thread2Messages.last!.content, lastMessageDate: thread2Messages.last!.timestamp, messages: thread2Messages),
-            ChatThread(title: "Свадьба", lastMessage: thread3Messages.last!.content, lastMessageDate: thread3Messages.last!.timestamp, messages: thread3Messages)
+            ChatThread(id: UUID(), title: "Организация дня рождения", lastMessage: thread1Messages.last!.content, lastMessageDate: thread1Messages.last!.timestamp, messages: thread1Messages),
+            ChatThread(id: UUID(), title: "Корпоратив", lastMessage: thread2Messages.last!.content, lastMessageDate: thread2Messages.last!.timestamp, messages: thread2Messages),
+            ChatThread(id: UUID(), title: "Свадьба", lastMessage: thread3Messages.last!.content, lastMessageDate: thread3Messages.last!.timestamp, messages: thread3Messages)
         ]
+        
+        for thread in chatThreads {
+            ChatStorageService.shared.saveChatThread(thread)
+        }
     }
     
-    // Function to update chat thread properties
+    func deleteChat(at indexSet: IndexSet) {
+        for index in indexSet {
+            let threadId = chatThreads[index].id
+            ChatStorageService.shared.deleteChatThread(id: threadId)
+        }
+        chatThreads.remove(atOffsets: indexSet)
+    }
+    
     func updateChatThread(threadId: UUID, title: String? = nil, lastMessage: String? = nil, lastMessageDate: Date? = nil) {
         if let index = chatThreads.firstIndex(where: { $0.id == threadId }) {
             if let title = title {
@@ -209,7 +185,6 @@ final class ChatViewModel: ObservableObject {
         }
     }
     
-    // Get chat title by ID
     func getChatTitle(for id: UUID) -> String {
         if let chat = chatThreads.first(where: { $0.id == id }) {
             return chat.title
