@@ -8,7 +8,6 @@ struct EventCreationView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with improved padding
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark")
@@ -24,7 +23,6 @@ struct EventCreationView: View {
                 
                 Spacer()
                 
-                // Invisible element to balance the header
                 Image(systemName: "xmark")
                     .foregroundColor(.clear)
                     .font(.system(size: 20))
@@ -35,7 +33,6 @@ struct EventCreationView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // Name field
                     TextField("", text: $viewModel.title)
                         .placeholder(when: viewModel.title.isEmpty) {
                             Text("Название (обязательно)")
@@ -46,7 +43,6 @@ struct EventCreationView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                     
-                    // Description field
                     ZStack(alignment: .topLeading) {
                         if viewModel.description.isEmpty {
                             Text("Описание")
@@ -65,7 +61,6 @@ struct EventCreationView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
                     
-                    // Date field
                     TextField("", text: .constant(""))
                         .disabled(true)
                         .placeholder(when: true) {
@@ -86,7 +81,6 @@ struct EventCreationView: View {
                             }
                         )
                     
-                    // Place field
                     TextField("", text: $viewModel.place)
                         .placeholder(when: viewModel.place.isEmpty) {
                             Text("Место проведения")
@@ -97,7 +91,6 @@ struct EventCreationView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                     
-                    // Budget field
                     TextField("", text: $viewModel.budget)
                         .placeholder(when: viewModel.budget.isEmpty) {
                             Text("Бюджет")
@@ -119,7 +112,6 @@ struct EventCreationView: View {
                 .padding(.top, 8)
             }
             
-            // Create button
             Button(action: {
                 Task {
                     let success = await viewModel.createEvent()
@@ -160,7 +152,6 @@ struct EventCreationView: View {
     }
 }
 
-// Extension for TextField placeholder
 extension View {
     func placeholder<Content: View>(
         when shouldShow: Bool,

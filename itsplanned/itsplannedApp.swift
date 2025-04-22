@@ -2,7 +2,7 @@
 //  itsplannedApp.swift
 //  itsplanned
 //
-//  Created by Владислав Сизикин on 15.03.2025.
+//  Created by Владислав Сизикин on 15.02.2025.
 //
 
 import SwiftUI

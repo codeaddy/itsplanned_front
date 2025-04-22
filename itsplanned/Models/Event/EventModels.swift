@@ -23,7 +23,6 @@ struct EventResponse: Codable, Equatable {
         case organizerId = "organizer_id"
     }
     
-    // Implementing Equatable manually to handle optional values properly
     static func == (lhs: EventResponse, rhs: EventResponse) -> Bool {
         return lhs.id == rhs.id &&
                lhs.createdAt == rhs.createdAt &&

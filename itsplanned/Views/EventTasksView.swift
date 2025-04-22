@@ -16,10 +16,8 @@ struct EventTasksView: View {
             // Custom navigation header
             HStack {
                 Button(action: { 
-                    // Try to dismiss using presentationMode first (for NavigationLink)
+                    // Simple dismiss - just use presentationMode
                     presentationMode.wrappedValue.dismiss()
-                    // If that doesn't work, use dismiss (for modal presentations)
-                    dismiss()
                 }) {
                     Image(systemName: "arrow.left")
                         .foregroundColor(.primary)
@@ -141,7 +139,16 @@ struct EventTasksView: View {
         .sheet(isPresented: $showTaskDetail, onDismiss: {
             // Refresh tasks when returning from detail view
             Task {
-                await viewModel.fetchTasks(eventId: eventId)
+                do {
+                    try await viewModel.fetchTasks(eventId: eventId)
+                } catch {
+                    print("Error refreshing tasks after detail view: \(error)")
+                    // Update error in view model
+                    DispatchQueue.main.async {
+                        viewModel.error = error.localizedDescription
+                        viewModel.showError = true
+                    }
+                }
             }
         }) {
             if let task = selectedTask {
@@ -186,8 +193,19 @@ struct EventTasksView: View {
         .navigationBarHidden(true)
         .background(Color(.systemGroupedBackground))
         .onAppear {
+            // Load the tasks on appear rather than task
             Task {
-                await viewModel.fetchTasks(eventId: eventId)
+                print("📱 EventTasksView appeared, loading tasks...")
+                do {
+                    try await viewModel.fetchTasks(eventId: eventId)
+                } catch {
+                    print("Error loading tasks in EventTasksView: \(error)")
+                    // Make sure the error is properly set
+                    if viewModel.error == nil {
+                        viewModel.error = error.localizedDescription
+                        viewModel.showError = true
+                    }
+                }
             }
         }
         .enableInjection()

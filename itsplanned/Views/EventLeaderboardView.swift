@@ -110,15 +110,15 @@ struct EventLeaderboardView: View {
             }
         }
         .onAppear {
-            print("🔍 EventLeaderboardView appeared")
+            print("EventLeaderboardView appeared")
             // Start loading data
             startLoadingProcess()
         }
         .onChange(of: viewModel.leaderboardUsers.count) { newCount in
-            print("📊 leaderboardUsers count changed: \(newCount) items")
+            print("leaderboardUsers count changed: \(newCount) items")
         }
         .onDisappear {
-            print("👋 EventLeaderboardView disappeared")
+            print("EventLeaderboardView disappeared")
             // Clean up when view disappears
             loadingTask?.cancel()
             loadingTask = nil
@@ -431,7 +431,7 @@ struct EventLeaderboardView: View {
     
     // Start the loading process
     private func startLoadingProcess() {
-        print("🚀 Starting leaderboard loading process")
+        print("Starting leaderboard loading process")
         // Cancel any previous task
         loadingTask?.cancel()
         loadingTask = nil
@@ -442,18 +442,18 @@ struct EventLeaderboardView: View {
         // Create a new loading task
         loadingTask = Task {
             do {
-                print("📡 Fetching leaderboard data for event ID: \(eventId)")
+                print("Fetching leaderboard data for event ID: \(eventId)")
                 await viewModel.fetchLeaderboard(eventId: eventId)
                 
                 // Short delay to ensure smooth UI transition
                 try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                 
                 await MainActor.run {
-                    print("✅ Loading completed, leaderboard has \(viewModel.leaderboardUsers.count) entries")
+                    print("Loading completed, leaderboard has \(viewModel.leaderboardUsers.count) entries")
                     isInitiallyLoading = false
                 }
             } catch {
-                print("❌ Error loading leaderboard: \(error)")
+                print("Error loading leaderboard: \(error)")
                 await MainActor.run {
                     isInitiallyLoading = false
                 }

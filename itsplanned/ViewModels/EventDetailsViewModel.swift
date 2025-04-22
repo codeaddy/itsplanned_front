@@ -40,6 +40,7 @@ final class EventDetailsViewModel: ObservableObject {
     @Published var hasAccess: Bool = true
     @Published var isOwner: Bool = false
     @Published var showShareLinkCopied: Bool = false
+    @Published var showingTimeslotsView: Bool = false
     
     // Edit mode properties
     @Published var isEditingName: Bool = false

@@ -15,14 +15,10 @@ struct ChatView: View {
         self.chatId = chatId
         self.title = title
         self.viewModel = viewModel
-        
-        // Ensure we load the correct chat messages
-        viewModel.loadChat(threadId: chatId)
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "arrow.left")
@@ -38,7 +34,6 @@ struct ChatView: View {
                 
                 Spacer()
                 
-                // Invisible element to balance the header
                 Image(systemName: "arrow.left")
                     .foregroundColor(.clear)
                     .font(.system(size: 20))
@@ -47,16 +42,25 @@ struct ChatView: View {
             .padding(.top, 20)
             .padding(.bottom, 10)
             
-            // Messages list
             ScrollViewReader { scrollView in
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(viewModel.currentMessages) { message in
                             ChatMessageView(message: message)
-                                .id(message.id) // For scrolling
+                                .id(message.id)
                         }
                         
-                        // Invisible spacer view to scroll to
+                        if viewModel.isLoading {
+                            HStack {
+                                Spacer()
+                                
+                                ProgressView()
+                                    .padding(.vertical, 10)
+                                
+                                Spacer()
+                            }
+                        }
+                        
                         Rectangle()
                             .fill(Color.clear)
                             .frame(height: 1)
@@ -67,13 +71,16 @@ struct ChatView: View {
                     .padding(.bottom, 8)
                 }
                 .onChange(of: viewModel.currentMessages.count) { _ in
-                    // Scroll to bottom when messages change
+                    withAnimation {
+                        scrollView.scrollTo("bottomID", anchor: .bottom)
+                    }
+                }
+                .onChange(of: viewModel.isLoading) { isLoading in
                     withAnimation {
                         scrollView.scrollTo("bottomID", anchor: .bottom)
                     }
                 }
                 .onAppear {
-                    // Scroll to bottom when view appears
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         withAnimation {
                             scrollView.scrollTo("bottomID", anchor: .bottom)
@@ -82,12 +89,10 @@ struct ChatView: View {
                 }
             }
             
-            // Input area
             VStack(spacing: 0) {
                 Divider()
                 
                 HStack(spacing: 12) {
-                    // Message input field
                     ZStack(alignment: .leading) {
                         if viewModel.messageText.isEmpty {
                             Text("сообщение")
@@ -99,24 +104,24 @@ struct ChatView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                             .focused($isInputFocused)
+                            .disabled(viewModel.isLoading)
                     }
                     .background(Color(.systemGray6))
                     .cornerRadius(20)
                     
-                    // Send button
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                             sendMessage()
                         }
                     }) {
-                        Image(systemName: "arrow.up")
+                        Image(systemName: viewModel.isLoading ? "hourglass" : "arrow.up")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(10)
                             .background(Circle().fill(Color.blue))
                     }
-                    .disabled(viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1.0)
+                    .disabled(viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
+                    .opacity(viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading ? 0.4 : 1.0)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -125,10 +130,18 @@ struct ChatView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            // Auto-focus the text field after a short delay to ensure the view is fully loaded
+            viewModel.loadChat(threadId: chatId)
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isInputFocused = true
             }
+        }
+        .alert(isPresented: $viewModel.showError) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(viewModel.errorMessage),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .enableInjection()
     }
@@ -146,7 +159,6 @@ struct ChatMessageView: View {
             if message.isFromUser {
                 Spacer()
                 
-                // User message - blue bubble on the right
                 Text(message.content)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -154,7 +166,6 @@ struct ChatMessageView: View {
                     .foregroundColor(.white)
                     .clipShape(ChatBubbleShape(isFromUser: true))
                     .overlay(
-                        // Time display at the bottom left
                         Text(message.formattedTime)
                             .font(.system(size: 10))
                             .foregroundColor(.gray)
@@ -162,9 +173,8 @@ struct ChatMessageView: View {
                             .offset(y: 18),
                         alignment: .bottomLeading
                     )
-                    .padding(.bottom, 15) // Add padding for the timestamp
+                    .padding(.bottom, 15)
             } else {
-                // Assistant avatar
                 ZStack {
                     Circle()
                         .fill(Color.blue.opacity(0.2))
@@ -174,7 +184,6 @@ struct ChatMessageView: View {
                         .font(.system(size: 18))
                 }
                 
-                // Assistant message - gray bubble on the left
                 Text(message.content)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -182,7 +191,6 @@ struct ChatMessageView: View {
                     .foregroundColor(.primary)
                     .clipShape(ChatBubbleShape(isFromUser: false))
                     .overlay(
-                        // Time display at the bottom right
                         Text(message.formattedTime)
                             .font(.system(size: 10))
                             .foregroundColor(.gray)
@@ -190,7 +198,7 @@ struct ChatMessageView: View {
                             .offset(y: 18),
                         alignment: .bottomTrailing
                     )
-                    .padding(.bottom, 15) // Add padding for the timestamp
+                    .padding(.bottom, 15)
                 
                 Spacer()
             }
@@ -198,7 +206,6 @@ struct ChatMessageView: View {
     }
 }
 
-// Custom chat bubble shape
 struct ChatBubbleShape: Shape {
     var isFromUser: Bool
     

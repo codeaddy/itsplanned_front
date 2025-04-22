@@ -18,7 +18,7 @@ struct EventDetailsView: View {
     init(event: Binding<EventResponse>) {
         self._event = event
         self._currentEvent = State(initialValue: event.wrappedValue)
-        print("🚀 EventDetailsView initialized for event ID: \(event.wrappedValue.id)")
+        print("EventDetailsView initialized for event ID: \(event.wrappedValue.id)")
     }
     
     var body: some View {
@@ -47,7 +47,7 @@ struct EventDetailsView: View {
                     // Add a retry button in case loading gets stuck
                     if loadingAttempts > 1 {
                         Button("Повторить") {
-                            print("🔄 Manual retry requested")
+                            print("Manual retry requested")
                             startLoadingProcess()
                         }
                         .padding(.top, 24)
@@ -237,7 +237,7 @@ struct EventDetailsView: View {
                                 
                                 // Google Calendar button
                                 Button(action: {
-                                    // Google Calendar action
+                                    viewModel.showingTimeslotsView = true
                                 }) {
                                     Text("Подобрать время с Google Calendar")
                                         .fontWeight(.medium)
@@ -246,6 +246,13 @@ struct EventDetailsView: View {
                                         .padding()
                                         .background(Color.blue)
                                         .cornerRadius(10)
+                                }
+                                .sheet(isPresented: $viewModel.showingTimeslotsView) {
+                                    EventTimeslotsView(eventId: currentEvent.id, event: $currentEvent)
+                                        .onDisappear {
+                                            // Update the parent event when returning from the timeslots view
+                                            updateParentEvent()
+                                        }
                                 }
                                 
                                 // Place field
@@ -614,7 +621,7 @@ struct EventDetailsView: View {
         // Add a timeout to reset loading state if it gets stuck
         .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { _ in
             if isInitiallyLoading && loadingTask != nil {
-                print("⏰ Loading timeout - resetting loading state")
+                print("Loading timeout - resetting loading state")
                 DispatchQueue.main.async {
                     isInitiallyLoading = false
                 }
@@ -838,7 +845,7 @@ struct EventDetailsView: View {
                 
                 print("[\(taskID)] ===== LOADING PROCESS COMPLETED =====")
             } catch {
-                print("❌ Error during loading: \(error.localizedDescription)")
+                print("Error during loading: \(error.localizedDescription)")
                 
                 if !Task.isCancelled {
                     // Ensure we're on the main thread for UI updates
@@ -859,10 +866,46 @@ struct TasksDestinationView: View {
     let eventName: String
     @StateObject private var viewModel = EventTasksViewModel()
     @State private var isInitiallyLoading = true
+    @State private var errorMessage: String? = nil
     
     var body: some View {
         ZStack {
-            if isInitiallyLoading {
+            if let error = errorMessage {
+                // Show error view
+                VStack(spacing: 16) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.orange)
+                    
+                    Text("Ошибка загрузки")
+                        .font(.headline)
+                    
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Button(action: {
+                        // Retry loading
+                        Task {
+                            errorMessage = nil
+                            isInitiallyLoading = true
+                            try? await Task.sleep(for: .milliseconds(300))
+                            await loadData()
+                        }
+                    }) {
+                        Text("Повторить")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding()
+            } else if isInitiallyLoading {
                 VStack {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
@@ -882,10 +925,50 @@ struct TasksDestinationView: View {
             }
         }
         .task {
-            // Complete all initial data loading before showing the view
-            viewModel.setCurrentUserId(await KeychainManager.shared.getUserId() ?? 0)
-            await viewModel.fetchTasks(eventId: eventId)
-            isInitiallyLoading = false
+            await loadData()
+        }
+        .navigationBarBackButtonHidden(true)
+        .onDisappear {
+            print("TasksDestinationView disappeared")
+        }
+    }
+    
+    private func loadData() async {
+        print("Starting to load tasks for event ID: \(eventId)")
+        
+        // Always mark as not loading at the end, no matter what happens
+        defer {
+            // Use main thread to update UI state
+            DispatchQueue.main.async {
+                isInitiallyLoading = false
+            }
+        }
+        
+        // Configure the view model
+        let userId = await KeychainManager.shared.getUserId() ?? 0
+        viewModel.setCurrentUserId(userId)
+        print("Set current user ID to: \(userId)")
+        
+        // Simplified error handling
+        do {
+            try await viewModel.fetchTasks(eventId: eventId)
+            
+            // If we got here, it worked
+            print("Successfully loaded \(viewModel.tasks.count) tasks")
+            errorMessage = nil
+        } catch {
+            // Something went wrong
+            print("Error fetching tasks: \(error)")
+            
+            if let taskError = error as? TaskError {
+                errorMessage = taskError.description
+            } else {
+                errorMessage = "Не удалось загрузить задачи: \(error.localizedDescription)"
+            }
+            
+            // Also set viewModel error for consistency
+            viewModel.error = errorMessage
+            viewModel.showError = true
         }
     }
 }
