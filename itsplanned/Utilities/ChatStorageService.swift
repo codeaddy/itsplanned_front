@@ -11,7 +11,6 @@ class ChatStorageService {
     
     private init() {}
     
-    // Save all chat threads to device storage
     func saveChatThreads(_ chatThreads: [ChatThread]) {
         do {
             let data = try JSONEncoder().encode(chatThreads)
@@ -22,7 +21,6 @@ class ChatStorageService {
         }
     }
     
-    // Load all chat threads from device storage
     func loadChatThreads() -> [ChatThread] {
         guard let data = userDefaults.data(forKey: chatThreadsKey) else {
             logger.debug("No chat threads found in storage")
@@ -39,7 +37,6 @@ class ChatStorageService {
         }
     }
     
-    // Save a single chat thread
     func saveChatThread(_ chatThread: ChatThread) {
         var chatThreads = loadChatThreads()
         
@@ -53,20 +50,17 @@ class ChatStorageService {
         saveChatThreads(chatThreads)
     }
     
-    // Delete a single chat thread
     func deleteChatThread(id: UUID) {
         var chatThreads = loadChatThreads()
         chatThreads.removeAll(where: { $0.id == id })
         saveChatThreads(chatThreads)
     }
     
-    // Get a single chat thread by ID
     func getChatThread(id: UUID) -> ChatThread? {
         let chatThreads = loadChatThreads()
         return chatThreads.first(where: { $0.id == id })
     }
     
-    // Clear all chat history
     func clearAllChats() {
         userDefaults.removeObject(forKey: chatThreadsKey)
         logger.debug("Cleared all chat threads from storage")

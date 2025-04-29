@@ -26,10 +26,8 @@ class YandexGPTService {
         // Add system prompt as the first message
         gptMessages.insert(YandexGPTMessage(role: "system", text: SERVICE_SYSTEM_PROMPT), at: 0)
         
-        // Create request
         let request = YandexGPTRequest(messages: gptMessages)
         
-        // Encode request
         let jsonData = try JSONEncoder().encode(request)
         
         // Set up URLRequest
@@ -41,8 +39,7 @@ class YandexGPTService {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Add authorization if user is logged in
-        if let token = try? await KeychainManager.shared.getToken() {
+        if let token = await KeychainManager.shared.getToken() {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -50,10 +47,8 @@ class YandexGPTService {
         
         logger.debug("Sending request to Yandex GPT: \(String(data: jsonData, encoding: .utf8) ?? "")")
         
-        // Send request
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         
-        // Check response
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
@@ -61,11 +56,9 @@ class YandexGPTService {
         logger.debug("Received response: \(String(data: data, encoding: .utf8) ?? "")")
         
         if httpResponse.statusCode == 200 {
-            // Decode the response
             let gptResponse = try JSONDecoder().decode(YandexGPTResponse.self, from: data)
             return gptResponse.message
         } else {
-            // Attempt to decode error response
             let errorResponse = try? JSONDecoder().decode([String: String].self, from: data)
             if let errorResponse = errorResponse,
                let errorMessage = errorResponse["error"] {

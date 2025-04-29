@@ -13,10 +13,8 @@ struct EventTasksView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Custom navigation header
             HStack {
-                Button(action: { 
-                    // Simple dismiss - just use presentationMode
+                Button(action: {
                     presentationMode.wrappedValue.dismiss()
                 }) {
                     Image(systemName: "arrow.left")
@@ -32,7 +30,6 @@ struct EventTasksView: View {
                 
                 Spacer()
                 
-                // Invisible element to balance the header
                 Image(systemName: "arrow.left")
                     .foregroundColor(.clear)
                     .font(.system(size: 20))
@@ -102,7 +99,7 @@ struct EventTasksView: View {
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-                    .padding(.bottom, 80) // Add padding for the floating button
+                    .padding(.bottom, 80)
                 }
             }
         }
@@ -137,13 +134,11 @@ struct EventTasksView: View {
             )
         }
         .sheet(isPresented: $showTaskDetail, onDismiss: {
-            // Refresh tasks when returning from detail view
             Task {
                 do {
                     try await viewModel.fetchTasks(eventId: eventId)
                 } catch {
                     print("Error refreshing tasks after detail view: \(error)")
-                    // Update error in view model
                     DispatchQueue.main.async {
                         viewModel.error = error.localizedDescription
                         viewModel.showError = true
@@ -171,7 +166,6 @@ struct EventTasksView: View {
                                 }
                             },
                             onUpdateTask: { title, description, budget, points in
-                                // Refresh the selected task after update
                                 let result = await viewModel.updateTask(taskId: task.id, title: title, description: description, budget: budget, points: points)
                                 if result {
                                     selectedTask = viewModel.tasks.first(where: { $0.id == task.id })
@@ -193,14 +187,12 @@ struct EventTasksView: View {
         .navigationBarHidden(true)
         .background(Color(.systemGroupedBackground))
         .onAppear {
-            // Load the tasks on appear rather than task
             Task {
-                print("📱 EventTasksView appeared, loading tasks...")
+                print("EventTasksView appeared, loading tasks...")
                 do {
                     try await viewModel.fetchTasks(eventId: eventId)
                 } catch {
                     print("Error loading tasks in EventTasksView: \(error)")
-                    // Make sure the error is properly set
                     if viewModel.error == nil {
                         viewModel.error = error.localizedDescription
                         viewModel.showError = true
@@ -228,7 +220,6 @@ struct TaskCardView: View {
                 
                 if task.assignedTo != nil {
                     HStack(spacing: 8) {
-                        // User avatar
                         Circle()
                             .fill(Color.blue.opacity(0.2))
                             .frame(width: 24, height: 24)
@@ -251,10 +242,9 @@ struct TaskCardView: View {
             
             Spacer()
             
-            // Points circle
             ZStack {
                 Circle()
-                    .fill(Color(red: 0.2, green: 0.8, blue: 0.4)) // Closer to the screenshot green
+                    .fill(Color(red: 0.2, green: 0.8, blue: 0.4))
                     .frame(width: 36, height: 36)
                 
                 Text("\(task.points)")
@@ -263,13 +253,11 @@ struct TaskCardView: View {
             }
             .padding(.trailing, isCurrentUserAssigned && !task.isCompleted ? 0 : 8)
             
-            // Status button/indicator
             Group {
                 if task.isCompleted {
-                    // Completed task - can be reverted
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.2, green: 0.8, blue: 0.4)) // Matching green
+                            .fill(Color(red: 0.2, green: 0.8, blue: 0.4))
                             .frame(width: 36, height: 36)
                         
                         Image(systemName: "arrow.uturn.backward")
@@ -280,10 +268,9 @@ struct TaskCardView: View {
                         onToggleCompletion()
                     }
                 } else if task.assignedTo == nil {
-                    // No performer assigned - can be assigned to current user
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.95, green: 0.55, blue: 0.45)) // Salmon color from screenshot
+                            .fill(Color(red: 0.95, green: 0.55, blue: 0.45))
                             .frame(width: 36, height: 36)
                         
                         Image(systemName: "person.badge.plus")
@@ -294,12 +281,10 @@ struct TaskCardView: View {
                         onToggleAssignment()
                     }
                 } else if isCurrentUserAssigned {
-                    // Current user is assigned - can either complete or unassign
                     HStack(spacing: 4) {
-                        // Complete button
                         ZStack {
                             Circle()
-                                .fill(Color(red: 0.2, green: 0.8, blue: 0.4)) // Matching green
+                                .fill(Color(red: 0.2, green: 0.8, blue: 0.4))
                                 .frame(width: 32, height: 32)
                             
                             Image(systemName: "checkmark")
@@ -310,10 +295,9 @@ struct TaskCardView: View {
                             onToggleCompletion()
                         }
                         
-                        // Unassign button
                         ZStack {
                             Circle()
-                                .fill(Color(red: 0.95, green: 0.55, blue: 0.45)) // Salmon color
+                                .fill(Color(red: 0.95, green: 0.55, blue: 0.45))
                                 .frame(width: 32, height: 32)
                             
                             Image(systemName: "person.badge.minus")
@@ -325,10 +309,9 @@ struct TaskCardView: View {
                         }
                     }
                 } else {
-                    // Someone else is assigned - can't be modified by current user
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.95, green: 0.8, blue: 0.3)) // Yellow from screenshot
+                            .fill(Color(red: 0.95, green: 0.8, blue: 0.3))
                             .frame(width: 36, height: 36)
                         
                         Image(systemName: "clock")
@@ -338,7 +321,6 @@ struct TaskCardView: View {
                 }
             }
             
-            // Navigation chevron
             Image(systemName: "chevron.right")
                 .foregroundColor(.gray)
         }
@@ -384,11 +366,9 @@ struct AddTaskView: View {
 #Preview {
     let previewViewModel = EventTasksViewModel()
     
-    // Set up for preview
     previewViewModel.setCurrentUserId(1)
     previewViewModel.skipAPICallsForPreview()
     
-    // Add mock tasks
     previewViewModel.tasks = [
         TaskResponse(
             id: 1,
@@ -397,7 +377,7 @@ struct AddTaskView: View {
             budget: 5000,
             points: 5,
             eventId: 1,
-            assignedTo: 1, // Assigned to current user
+            assignedTo: 1,
             isCompleted: false
         ),
         TaskResponse(
@@ -407,7 +387,7 @@ struct AddTaskView: View {
             budget: 3000,
             points: 6,
             eventId: 1,
-            assignedTo: nil, // Not assigned
+            assignedTo: nil,
             isCompleted: false
         ),
         TaskResponse(
@@ -417,7 +397,7 @@ struct AddTaskView: View {
             budget: 2000,
             points: 7,
             eventId: 1,
-            assignedTo: 2, // Assigned to another user
+            assignedTo: 2,
             isCompleted: false
         ),
         TaskResponse(
@@ -427,7 +407,7 @@ struct AddTaskView: View {
             budget: 1000,
             points: 4,
             eventId: 1,
-            assignedTo: 1, // Assigned to current user
+            assignedTo: 1,
             isCompleted: true
         )
     ]

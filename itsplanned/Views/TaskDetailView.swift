@@ -12,7 +12,6 @@ struct TaskDetailView: View {
     let onToggleCompletion: () -> Void
     let onUpdateTask: (String, String?, Double?, Int?) async -> Bool
     
-    // State variables for editing
     @State private var isEditingTitle = false
     @State private var isEditingDescription = false
     @State private var isEditingBudget = false
@@ -41,7 +40,6 @@ struct TaskDetailView: View {
         self.onToggleCompletion = onToggleCompletion
         self.onUpdateTask = onUpdateTask
         
-        // Initialize state with current values
         _editedTitle = State(initialValue: task.title)
         _editedDescription = State(initialValue: task.description ?? "")
         _editedBudget = State(initialValue: task.budget != nil ? String(format: "%.0f", task.budget!) : "")
@@ -51,9 +49,7 @@ struct TaskDetailView: View {
     var body: some View {
         ZStack {
             ScrollView {
-                // Task detail content
                 VStack(alignment: .leading, spacing: 20) {
-                    // Header with back button
                     HStack {
                         Button(action: { dismiss() }) {
                             Image(systemName: "arrow.left")
@@ -69,7 +65,6 @@ struct TaskDetailView: View {
                         
                         Spacer()
                         
-                        // Invisible element to balance the header
                         Image(systemName: "arrow.left")
                             .foregroundColor(.clear)
                             .font(.system(size: 20))
@@ -77,11 +72,9 @@ struct TaskDetailView: View {
                     .padding(.horizontal)
                     .padding(.top, 10)
                     
-                    // Header section with title and status
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 8) {
                             if isEditingTitle {
-                                // Title editing
                                 HStack {
                                     TextField("Название задачи", text: $editedTitle)
                                         .font(.title)
@@ -89,7 +82,6 @@ struct TaskDetailView: View {
                                         .foregroundColor(.primary)
                                     
                                     Button(action: {
-                                        // Save the edited title
                                         saveTaskChanges()
                                     }) {
                                         Image(systemName: "checkmark")
@@ -97,7 +89,6 @@ struct TaskDetailView: View {
                                     }
                                     
                                     Button(action: {
-                                        // Cancel editing
                                         isEditingTitle = false
                                         editedTitle = task.title
                                     }) {
@@ -106,7 +97,6 @@ struct TaskDetailView: View {
                                     }
                                 }
                             } else {
-                                // Display title with edit button if user is event creator
                                 HStack {
                                     Text(task.title)
                                         .font(.title)
@@ -125,14 +115,12 @@ struct TaskDetailView: View {
                                 }
                             }
                             
-                            // Description section
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Описание")
                                     .font(.headline)
                                     .foregroundColor(.gray)
                                 
                                 if isEditingDescription {
-                                    // Description editing
                                     VStack(alignment: .trailing) {
                                         TextEditor(text: $editedDescription)
                                             .frame(minHeight: 100)
@@ -142,7 +130,6 @@ struct TaskDetailView: View {
                                         
                                         HStack {
                                             Button(action: {
-                                                // Save the edited description
                                                 saveTaskChanges()
                                             }) {
                                                 Image(systemName: "checkmark")
@@ -150,7 +137,6 @@ struct TaskDetailView: View {
                                             }
                                             
                                             Button(action: {
-                                                // Cancel editing
                                                 isEditingDescription = false
                                                 editedDescription = task.description ?? ""
                                             }) {
@@ -161,7 +147,6 @@ struct TaskDetailView: View {
                                         .padding(.top, 4)
                                     }
                                 } else {
-                                    // Display description with edit button if user is event creator
                                     HStack(alignment: .top) {
                                         Text(task.description?.isEmpty ?? true ? "Нет описания" : task.description!)
                                             .font(.body)
@@ -185,14 +170,12 @@ struct TaskDetailView: View {
                         
                         Spacer()
                         
-                        // Points bubble
                         ZStack {
                             Circle()
                                 .fill(Color(red: 0.2, green: 0.8, blue: 0.4))
                                 .frame(width: 50, height: 50)
                             
                             if isEditingPoints {
-                                // Points editing
                                 VStack {
                                     TextField("Баллы", text: $editedPoints)
                                         .keyboardType(.numberPad)
@@ -236,7 +219,6 @@ struct TaskDetailView: View {
                     
                     Divider()
                     
-                    // Assignment section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Исполнитель")
                             .font(.headline)
@@ -244,7 +226,6 @@ struct TaskDetailView: View {
                         
                         if task.assignedTo != nil {
                             HStack(spacing: 12) {
-                                // User avatar
                                 Circle()
                                     .fill(Color.blue.opacity(0.2))
                                     .frame(width: 40, height: 40)
@@ -280,14 +261,12 @@ struct TaskDetailView: View {
                     
                     Divider()
                     
-                    // Budget section if applicable
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Бюджет")
                             .font(.headline)
                             .foregroundColor(.primary)
                         
                         if isEditingBudget {
-                            // Budget editing
                             HStack {
                                 TextField("Бюджет", text: $editedBudget)
                                     .keyboardType(.numberPad)
@@ -297,7 +276,6 @@ struct TaskDetailView: View {
                                     .foregroundColor(.primary)
                                 
                                 Button(action: {
-                                    // Save the edited budget
                                     saveTaskChanges()
                                 }) {
                                     Image(systemName: "checkmark")
@@ -305,7 +283,6 @@ struct TaskDetailView: View {
                                 }
                                 
                                 Button(action: {
-                                    // Cancel editing
                                     isEditingBudget = false
                                     editedBudget = task.budget != nil ? String(format: "%.0f", task.budget!) : ""
                                 }) {
@@ -314,7 +291,6 @@ struct TaskDetailView: View {
                                 }
                             }
                         } else {
-                            // Display budget with edit button if user is event creator
                             HStack {
                                 Image(systemName: "creditcard")
                                     .foregroundColor(.blue)
@@ -340,7 +316,6 @@ struct TaskDetailView: View {
                     
                     Divider()
                     
-                    // Status section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Статус")
                             .font(.headline)
@@ -351,7 +326,7 @@ struct TaskDetailView: View {
                                 .foregroundColor(task.isCompleted ? .green : .orange)
                                 .font(.system(size: 20))
                             
-                            Text(task.isCompleted ? "Выполнено" : "В процессе")
+                            Text(task.isCompleted ? "Выполнено" : "Ждет выполнения")
                                 .font(.body)
                                 .fontWeight(.medium)
                         }
@@ -364,7 +339,6 @@ struct TaskDetailView: View {
             }
             .navigationBarHidden(true)
             
-            // Loading overlay
             if isLoading {
                 ZStack {
                     Color(.systemBackground).opacity(0.7)
@@ -405,40 +379,32 @@ struct TaskDetailView: View {
         Task {
             isLoading = true
             
-            // Prepare budget value
             var budgetValue: Double? = nil
             if !editedBudget.isEmpty {
                 budgetValue = Double(editedBudget)
             }
             
-            // Prepare points value
             var pointsValue: Int? = nil
             if !editedPoints.isEmpty, let points = Int(editedPoints) {
                 pointsValue = points
             }
             
-            // Prepare description
             let description = editedDescription.isEmpty ? nil : editedDescription
             
-            // Call the update function
             let success = await onUpdateTask(editedTitle, description, budgetValue, pointsValue)
             
-            // Handle result
             isLoading = false
             if success {
-                // Reset editing flags
                 isEditingTitle = false
                 isEditingDescription = false
                 isEditingBudget = false
                 isEditingPoints = false
                 
-                // Show success message
                 showingSaveConfirmation = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     showingSaveConfirmation = false
                 }
             } else {
-                // Show error message
                 showingErrorAlert = true
             }
         }

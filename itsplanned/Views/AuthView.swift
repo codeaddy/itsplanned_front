@@ -32,7 +32,6 @@ struct AuthView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(10)
                 
-                // Password field
                 HStack {
                     SecureField("Пароль", text: $password)
                         .textContentType(isRegistering ? .newPassword : .password)
@@ -45,7 +44,6 @@ struct AuthView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(10)
                 
-                // Confirm password field (only for registration)
                 if isRegistering {
                     HStack {
                         SecureField("Подтвердите пароль", text: $confirmPassword)
@@ -95,7 +93,6 @@ struct AuthView: View {
             Button(action: {
                 withAnimation {
                     isRegistering.toggle()
-                    // Clear fields when switching modes
                     password = ""
                     confirmPassword = ""
                     viewModel.error = nil
@@ -122,7 +119,6 @@ struct AuthView: View {
         }
         .onChange(of: viewModel.isAuthenticated) { newValue in
             if newValue {
-                // Clear sensitive data when authenticated
                 email = ""
                 password = ""
                 confirmPassword = ""

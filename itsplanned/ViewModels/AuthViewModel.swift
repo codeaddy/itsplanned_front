@@ -42,7 +42,6 @@ final class AuthViewModel: ObservableObject {
     private let baseURL = "http://localhost:8080"
     
     init() {
-        // Check if we have a token stored
         Task {
             if await KeychainManager.shared.getToken() != nil {
                 await setAuthenticationState(true)
@@ -53,7 +52,12 @@ final class AuthViewModel: ObservableObject {
     
     private func setAuthenticationState(_ authenticated: Bool) async {
         isAuthenticated = authenticated
-        if !authenticated {
+        if authenticated {
+            // Start the background task when authenticated
+            TaskStatusEventService.shared.startBackgroundFetching()
+        } else {
+            // Stop the background task when logged out
+            TaskStatusEventService.shared.stopBackgroundFetching()
             currentUser = nil
             email = ""
             password = ""
@@ -96,7 +100,6 @@ final class AuthViewModel: ObservableObject {
                 let profileResponse = try JSONDecoder().decode(UserProfileResponse.self, from: data)
                 self.currentUser = profileResponse.user
                 
-                // Save user ID
                 await KeychainManager.shared.saveUserId(profileResponse.user.id)
             } else {
                 let errorResponse = try JSONDecoder().decode(APIResponse<String>.self, from: data)
@@ -250,16 +253,14 @@ final class AuthViewModel: ObservableObject {
     private func handleRegistrationResponse(httpResponse: HTTPURLResponse, data: Data, email: String) async throws {
         if httpResponse.statusCode == 200 {
             let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
-            // Store the token securely
             await KeychainManager.shared.saveToken(loginResponse.token)
-            // Store email in UserDefaults
+            
             UserDefaults.standard.email = email
             self.email = email
             await setAuthenticationState(true)
-            // Fetch user profile
+            
             await fetchUserProfile()
         } else {
-            // Try to decode error response
             if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
                 throw AuthError.networkError(errorResponse.error ?? "Registration failed")
             } else {
@@ -270,39 +271,31 @@ final class AuthViewModel: ObservableObject {
 
     private func handleLoginResponse(httpResponse: HTTPURLResponse, data: Data, email: String) async throws {
         if httpResponse.statusCode == 200 {
-            // Try to decode as direct LoginResponse first
             do {
                 let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
-                // Store the token securely
+
                 await KeychainManager.shared.saveToken(loginResponse.token)
                 
-                // Store email in UserDefaults
                 UserDefaults.standard.email = email
                 self.email = email
                 await setAuthenticationState(true)
                 
-                // Fetch user profile to get user ID
                 await fetchUserProfile()
             } catch {
-                // If direct decoding fails, try as APIResponse<LoginResponse>
                 let loginResponse = try JSONDecoder().decode(APIResponse<LoginResponse>.self, from: data)
-                // Store the token securely
                 if let loginData = loginResponse.data {
                     await KeychainManager.shared.saveToken(loginData.token)
                     
-                    // Store email in UserDefaults
                     UserDefaults.standard.email = email
                     self.email = email
                     await setAuthenticationState(true)
                     
-                    // Fetch user profile to get user ID
                     await fetchUserProfile()
                 } else {
                     throw AuthError.networkError("Login response data is missing")
                 }
             }
         } else {
-            // Try to decode error response
             if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
                 throw AuthError.networkError(errorResponse.error ?? "Login failed")
             } else {

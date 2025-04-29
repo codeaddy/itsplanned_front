@@ -23,7 +23,6 @@ struct EventDetailsView: View {
     
     var body: some View {
         ZStack {
-            // Always show the background color to ensure the screen isn't blank
             Color(.systemBackground)
                 .ignoresSafeArea()
             
@@ -38,13 +37,11 @@ struct EventDetailsView: View {
                         .foregroundColor(.gray)
                         .padding(.top, 16)
                     
-                    // Show loading attempt number for debugging
                     Text("Попытка \(loadingAttempts)")
                         .font(.caption)
                         .foregroundColor(.gray)
                         .padding(.top, 8)
                     
-                    // Add a retry button in case loading gets stuck
                     if loadingAttempts > 1 {
                         Button("Повторить") {
                             print("Manual retry requested")
@@ -57,7 +54,6 @@ struct EventDetailsView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Header section with safe area padding
                         HStack {
                             Button(action: { dismiss() }) {
                                 Image(systemName: "arrow.left")
@@ -73,7 +69,6 @@ struct EventDetailsView: View {
                             
                             Spacer()
                             
-                            // Invisible element to balance the header
                             Image(systemName: "arrow.left")
                                 .foregroundColor(.clear)
                                 .font(.system(size: 20))
@@ -83,7 +78,6 @@ struct EventDetailsView: View {
                         .padding(.bottom, 8)
                         
                         if !viewModel.hasAccess {
-                            // Show access denied message
                             VStack(spacing: 16) {
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 50))
@@ -114,7 +108,6 @@ struct EventDetailsView: View {
                             .padding()
                             .frame(maxWidth: .infinity)
                         } else {
-                            // Event details section
                             VStack(spacing: 16) {
                                 // Name field
                                 HStack {
@@ -124,7 +117,6 @@ struct EventDetailsView: View {
                                     Spacer()
                                 }
                                 if viewModel.isEditingName {
-                                    // Editing name
                                     HStack {
                                         TextField("Название", text: $viewModel.editedName)
                                             .padding(.vertical, 8)
@@ -153,7 +145,6 @@ struct EventDetailsView: View {
                                     .background(Color(.systemGray6))
                                     .cornerRadius(10)
                                 } else {
-                                    // Displaying name
                                     HStack {
                                         Text(currentEvent.name)
                                             .foregroundColor(.primary)
@@ -174,7 +165,6 @@ struct EventDetailsView: View {
                                     .cornerRadius(10)
                                 }
                                 
-                                // Date and time field
                                 HStack {
                                     Text("Дата и время")
                                         .foregroundColor(.gray)
@@ -183,7 +173,6 @@ struct EventDetailsView: View {
                                 }
                                 
                                 if viewModel.isEditingDateTime {
-                                    // Editing date and time
                                     HStack {
                                         DatePicker("", selection: $viewModel.editedDateTime)
                                             .labelsHidden()
@@ -214,7 +203,6 @@ struct EventDetailsView: View {
                                     .background(Color(.systemGray6))
                                     .cornerRadius(10)
                                 } else {
-                                    // Displaying date and time
                                     HStack {
                                         Text(formattedDate(currentEvent.eventDateTime))
                                             .foregroundColor(.primary)
@@ -235,7 +223,6 @@ struct EventDetailsView: View {
                                     .cornerRadius(10)
                                 }
                                 
-                                // Google Calendar button
                                 Button(action: {
                                     viewModel.showingTimeslotsView = true
                                 }) {
@@ -250,12 +237,10 @@ struct EventDetailsView: View {
                                 .sheet(isPresented: $viewModel.showingTimeslotsView) {
                                     EventTimeslotsView(eventId: currentEvent.id, event: $currentEvent)
                                         .onDisappear {
-                                            // Update the parent event when returning from the timeslots view
                                             updateParentEvent()
                                         }
                                 }
                                 
-                                // Place field
                                 HStack {
                                     Text("Место проведения")
                                         .foregroundColor(.gray)
@@ -264,7 +249,6 @@ struct EventDetailsView: View {
                                 }
                                 
                                 if viewModel.isEditingPlace {
-                                    // Editing place
                                     HStack {
                                         TextField("Место проведения", text: $viewModel.editedPlace)
                                             .padding(.vertical, 8)
@@ -293,7 +277,6 @@ struct EventDetailsView: View {
                                     .background(Color(.systemGray6))
                                     .cornerRadius(10)
                                 } else {
-                                    // Displaying place
                                     HStack {
                                         Text(currentEvent.place ?? "Не указано")
                                             .foregroundColor(.primary)
@@ -314,7 +297,6 @@ struct EventDetailsView: View {
                                     .cornerRadius(10)
                                 }
                                 
-                                // Description field
                                 HStack {
                                     Text("Описание")
                                         .foregroundColor(.gray)
@@ -323,7 +305,6 @@ struct EventDetailsView: View {
                                 }
                                 
                                 if viewModel.isEditingDescription {
-                                    // Editing description
                                     VStack {
                                         TextEditor(text: $viewModel.editedDescription)
                                             .frame(minHeight: 100)
@@ -357,7 +338,6 @@ struct EventDetailsView: View {
                                     .background(Color(.systemGray6))
                                     .cornerRadius(10)
                                 } else {
-                                    // Displaying description
                                     HStack {
                                         Text(currentEvent.description ?? "Нет описания")
                                             .foregroundColor(.primary)
@@ -379,7 +359,6 @@ struct EventDetailsView: View {
                             }
                             .padding(.horizontal)
                             
-                            // Participants section
                             VStack(spacing: 16) {
                                 HStack {
                                     Text("Участники мероприятия")
@@ -389,7 +368,6 @@ struct EventDetailsView: View {
                                 }
                                 .padding(.horizontal)
                                 
-                                // Centered participant buttons
                                 HStack {
                                     Spacer()
                                     
@@ -440,10 +418,8 @@ struct EventDetailsView: View {
                                 }
                             }
                             
-                            // Budget section
                             VStack(spacing: 16) {
                                 if viewModel.isEditingBudget {
-                                    // Editing budget
                                     HStack {
                                         Image(systemName: "banknote")
                                             .foregroundColor(.gray)
@@ -482,7 +458,6 @@ struct EventDetailsView: View {
                                     }
                                     .padding(.horizontal)
                                 } else {
-                                    // Displaying budget
                                     HStack {
                                         Image(systemName: "banknote")
                                             .foregroundColor(.gray)
@@ -505,7 +480,6 @@ struct EventDetailsView: View {
                                 }
                             }
                             
-                            // Tasks section
                             VStack(spacing: 16) {
                                 NavigationLink(destination: TasksDestinationView(eventId: currentEvent.id, eventName: currentEvent.name)) {
                                     HStack {
@@ -526,7 +500,6 @@ struct EventDetailsView: View {
                                 .padding(.horizontal)
                             }
                             
-                            // Leaderboard section
                             VStack(spacing: 16) {
                                 HStack {
                                     Text("Рейтинг участников")
@@ -542,7 +515,6 @@ struct EventDetailsView: View {
                                 .padding(.horizontal)
                             }
                             
-                            // Spent budget section
                             HStack {
                                 Text("Уже потрачено: \(formatBudget(viewModel.spentBudget))₽")
                                     .foregroundColor(.primary)
@@ -564,7 +536,6 @@ struct EventDetailsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .navigationBarHidden(true)
                 .overlay(
-                    // Share link copied notification
                     viewModel.showShareLinkCopied ?
                     VStack {
                         Spacer()
@@ -590,27 +561,22 @@ struct EventDetailsView: View {
             }
         }
         .onAppear {
-            // Ensure ViewModel is properly initialized when view appears
-            print("🎬 EventDetailsView appeared for event: \(currentEvent.id)")
+            print("EventDetailsView appeared for event: \(currentEvent.id)")
             
-            // Force a loading start after a very small delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                 startLoadingProcess()
             }
         }
         .onDisappear {
-            // Update the parent event when the view disappears
             updateParentEvent()
             
-            // Cancel any ongoing tasks to avoid state conflicts
             loadingTask?.cancel()
             loadingTask = nil
             
-            print("👋 EventDetailsView disappeared")
+            print("EventDetailsView disappeared")
         }
         .alert("Ошибка", isPresented: $viewModel.showError) {
-            Button("OK", role: .cancel) { 
-                // If the error is about access, dismiss the view
+            Button("OK", role: .cancel) {
                 if viewModel.errorMessage.contains("not a participant") {
                     dismiss()
                 }
@@ -618,7 +584,6 @@ struct EventDetailsView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        // Add a timeout to reset loading state if it gets stuck
         .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { _ in
             if isInitiallyLoading && loadingTask != nil {
                 print("Loading timeout - resetting loading state")
@@ -630,7 +595,6 @@ struct EventDetailsView: View {
         .enableInjection()
     }
     
-    // Fetch the latest event data
     func fetchLatestEventData() async throws {
         do {
             print("Starting fetchLatestEventData for event ID: \(currentEvent.id)")
@@ -660,7 +624,6 @@ struct EventDetailsView: View {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging - print full response details
             print("Event Details Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Event Details JSON: \(jsonString)")
@@ -671,9 +634,7 @@ struct EventDetailsView: View {
                 if let eventResponse = try? JSONDecoder().decode(APIResponse<EventResponse>.self, from: data),
                    let updatedEvent = eventResponse.data {
                     print("Successfully decoded event data")
-                    // Update the current event with the latest data
                     currentEvent = updatedEvent
-                    // Also update the parent event immediately
                     updateParentEvent()
                     print("Event data updated!")
                 } else {
@@ -697,7 +658,6 @@ struct EventDetailsView: View {
                 viewModel.errorMessage = error.localizedDescription
             }
             
-            // Important: Rethrow to ensure the caller knows there was an error
             throw error
         }
     }
@@ -718,33 +678,26 @@ struct EventDetailsView: View {
         return String(format: "%.0f", budget)
     }
     
-    // Update the parent view's event data when changes are made
     func updateParentEvent() {
         event = currentEvent
     }
     
-    // Manage the loading process with proper task handling
     private func startLoadingProcess() {
-        // Cancel any previous task
         loadingTask?.cancel()
         loadingTask = nil
         
-        // Reset loading state
         isInitiallyLoading = true
         loadingAttempts += 1
         
-        print("⚡️ Starting loading process (attempt \(loadingAttempts)) for event ID: \(currentEvent.id)")
+        print("Starting loading process (attempt \(loadingAttempts)) for event ID: \(currentEvent.id)")
         
-        // Create a new task
         loadingTask = Task {
             do {
-                // Create a unique task identifier for debugging
                 let taskID = UUID().uuidString.prefix(8)
                 print("[\(taskID)] ===== STARTING LOADING PROCESS (Attempt \(loadingAttempts)) =====")
                 print("[\(taskID)] Event ID: \(currentEvent.id)")
                 print("[\(taskID)] Event Name: \(currentEvent.name)")
                 
-                // Add a small delay to ensure the view is fully presented
                 try await Task.sleep(for: .milliseconds(300))
                 
                 if Task.isCancelled { 
@@ -752,7 +705,6 @@ struct EventDetailsView: View {
                     return 
                 }
                 
-                // First check if the user has access to the event
                 print("[\(taskID)] Checking event access...")
                 let hasAccess = await viewModel.checkEventAccess(eventId: currentEvent.id)
                 print("[\(taskID)] Access check result: \(hasAccess)")
@@ -763,14 +715,12 @@ struct EventDetailsView: View {
                 }
                 
                 if hasAccess {
-                    // Fetch the latest event data
                     print("[\(taskID)] Fetching event data...")
                     do {
                         try await fetchLatestEventData()
                         print("[\(taskID)] Event data fetched successfully")
                     } catch {
                         print("[\(taskID)] Error fetching event data: \(error)")
-                        // Continue with what we have, but log the error
                     }
                     
                     if Task.isCancelled { 
@@ -778,11 +728,9 @@ struct EventDetailsView: View {
                         return 
                     }
                     
-                    // Only fetch additional data if the user has access and task not cancelled
                     if !Task.isCancelled {
                         print("[\(taskID)] Fetching additional data...")
                         
-                        // Use withTaskGroup to allow concurrent fetching but ensure all complete
                         await withTaskGroup(of: Void.self) { group in
                             group.addTask {
                                 do {
@@ -814,23 +762,19 @@ struct EventDetailsView: View {
                                 }
                             }
                             
-                            // Wait for all tasks to complete
                             for await _ in group { }
                         }
                         print("[\(taskID)] All additional data loaded")
                     }
                 }
                 
-                // Final quick check for cancellation
                 if Task.isCancelled { 
                     print("[\(taskID)] Task cancelled before final state update")
                     return 
                 }
                 
-                // Wait a small amount to let things settle
                 try await Task.sleep(for: .milliseconds(200))
                 
-                // Ensure we're on the main thread when updating state
                 if !Task.isCancelled {
                     print("[\(taskID)] Setting isInitiallyLoading to false")
                     // Use DispatchQueue.main to ensure UI updates
@@ -848,7 +792,6 @@ struct EventDetailsView: View {
                 print("Error during loading: \(error.localizedDescription)")
                 
                 if !Task.isCancelled {
-                    // Ensure we're on the main thread for UI updates
                     DispatchQueue.main.async {
                         viewModel.showError = true
                         viewModel.errorMessage = error.localizedDescription
@@ -871,7 +814,6 @@ struct TasksDestinationView: View {
     var body: some View {
         ZStack {
             if let error = errorMessage {
-                // Show error view
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 50))
@@ -887,7 +829,6 @@ struct TasksDestinationView: View {
                         .padding(.horizontal)
                     
                     Button(action: {
-                        // Retry loading
                         Task {
                             errorMessage = nil
                             isInitiallyLoading = true
@@ -936,7 +877,6 @@ struct TasksDestinationView: View {
     private func loadData() async {
         print("Starting to load tasks for event ID: \(eventId)")
         
-        // Always mark as not loading at the end, no matter what happens
         defer {
             // Use main thread to update UI state
             DispatchQueue.main.async {
@@ -944,16 +884,13 @@ struct TasksDestinationView: View {
             }
         }
         
-        // Configure the view model
         let userId = await KeychainManager.shared.getUserId() ?? 0
         viewModel.setCurrentUserId(userId)
         print("Set current user ID to: \(userId)")
         
-        // Simplified error handling
         do {
             try await viewModel.fetchTasks(eventId: eventId)
             
-            // If we got here, it worked
             print("Successfully loaded \(viewModel.tasks.count) tasks")
             errorMessage = nil
         } catch {
@@ -966,7 +903,6 @@ struct TasksDestinationView: View {
                 errorMessage = "Не удалось загрузить задачи: \(error.localizedDescription)"
             }
             
-            // Also set viewModel error for consistency
             viewModel.error = errorMessage
             viewModel.showError = true
         }

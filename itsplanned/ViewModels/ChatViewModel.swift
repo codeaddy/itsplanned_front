@@ -19,10 +19,6 @@ final class ChatViewModel: ObservableObject {
     
     func loadSavedChats() {
         chatThreads = ChatStorageService.shared.loadChatThreads()
-        
-        if chatThreads.isEmpty {
-            loadTestData()
-        }
     }
     
     func sendMessage(threadId: UUID, content: String) {
@@ -127,37 +123,6 @@ final class ChatViewModel: ObservableObject {
             currentMessages = storedChat.messages
         } else if let chat = chatThreads.first(where: { $0.id == threadId }) {
             currentMessages = chat.messages
-        }
-    }
-    
-    func loadTestData() {
-        let thread1Messages: [ChatMessage] = [
-            ChatMessage(content: "Привет! Чем я могу тебе помочь?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2)),
-            ChatMessage(content: "Давай вместе придумаем самую крутую вечеринку! Расскажи мне о твоих запросах, количестве человек и локации мероприятия", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 1)),
-            ChatMessage(content: "Я хочу организовать день рождения на 25 человек. Предложи мне различные идеи проведения мероприятия!", isFromUser: true, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 120)),
-            ChatMessage(content: "Для дня рождения на 25 человек есть множество интересных вариантов!\n\n1. **Тематическая вечеринка**. Выберите тему, которая нравится имениннику: ретро 80-х, Гэтсби, супергерои, Гарри Поттер, кино. Гости могут прийти в соответствующих костюмах, а декор, еда и активности будут поддерживать тематику.\n\n2. **Квест или escape room**. Арендуйте готовый квеструм или организуйте собственный квест на природе или в помещении. Разделите гостей на команды для более динамичного прохождения.\n\n3. **Барбекю или пикник в парке**. Неформальное мероприятие на свежем воздухе с играми, музыкой и вкусной едой.\n\n4. **Аренда банкетного зала с развлекательной программой**. Пригласите ведущего, который организует конкурсы, или музыкальную группу/DJ.\n\n5. **Активный отдых**: боулинг, картинг, пейнтбол, лазертаг или веревочный парк — отличный вариант для любителей движения.\n\n6. **Кулинарный мастер-класс**. Пригласите шеф-повара, который научит гостей готовить интересные блюда, а потом все вместе насладятся результатом.\n\n7. **Творческий мастер-класс**: рисование, гончарное дело, изготовление свечей или других предметов. Гости получат новые навыки и сувениры на память.\n\nЧто из этого больше всего подходит имениннику и вашим гостям?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 2 + 240))
-        ]
-        
-        let thread2Messages: [ChatMessage] = [
-            ChatMessage(content: "Привет! Чем я могу тебе помочь?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 5)),
-            ChatMessage(content: "Мне нужна помощь с организацией корпоратива", isFromUser: true, timestamp: Date().addingTimeInterval(-3600 * 5 + 60)),
-            ChatMessage(content: "Конечно! Я могу помочь с организацией корпоратива. Расскажите подробнее о ваших планах: количество участников, предпочтительное место, бюджет и тематика мероприятия?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 5 + 120))
-        ]
-        
-        let thread3Messages: [ChatMessage] = [
-            ChatMessage(content: "Привет! Чем я могу тебе помочь?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 7)),
-            ChatMessage(content: "Мне нужно организовать свадьбу", isFromUser: true, timestamp: Date().addingTimeInterval(-3600 * 24 * 7 + 300)),
-            ChatMessage(content: "Поздравляю! Организация свадьбы - это важное и радостное событие. Я помогу вам спланировать этот особенный день. Сколько гостей вы планируете пригласить? Есть ли уже выбранная дата?", isFromUser: false, timestamp: Date().addingTimeInterval(-3600 * 24 * 7 + 400))
-        ]
-        
-        chatThreads = [
-            ChatThread(id: UUID(), title: "Организация дня рождения", lastMessage: thread1Messages.last!.content, lastMessageDate: thread1Messages.last!.timestamp, messages: thread1Messages),
-            ChatThread(id: UUID(), title: "Корпоратив", lastMessage: thread2Messages.last!.content, lastMessageDate: thread2Messages.last!.timestamp, messages: thread2Messages),
-            ChatThread(id: UUID(), title: "Свадьба", lastMessage: thread3Messages.last!.content, lastMessageDate: thread3Messages.last!.timestamp, messages: thread3Messages)
-        ]
-        
-        for thread in chatThreads {
-            ChatStorageService.shared.saveChatThread(thread)
         }
     }
     

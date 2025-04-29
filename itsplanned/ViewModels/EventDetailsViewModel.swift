@@ -2,12 +2,8 @@ import Foundation
 import OSLog
 import SwiftUI
 
-// Import models from their proper locations
-// No need to import SwiftUI twice
-
 private let logger = Logger(subsystem: "com.itsplanned", category: "EventDetails")
 
-// Define the EventError enum
 enum EventDetailError: Error {
     case invalidURL
     case invalidResponse
@@ -58,7 +54,6 @@ final class EventDetailsViewModel: ObservableObject {
     
     let baseURL = "http://localhost:8080"
     
-    // Fetch event participants
     func fetchParticipants(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -68,7 +63,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id}/participants endpoint
             guard let url = URL(string: "\(baseURL)/events/\(eventId)/participants") else {
                 throw EventDetailError.invalidURL
             }
@@ -83,18 +77,15 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging - print full response details
             print("Participants API Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Participants JSON: \(jsonString)")
             }
             
             if httpResponse.statusCode == 200 {
-                // Direct decoding of EventParticipantsResponse for 200 status
                 let participantsResponse = try JSONDecoder().decode(EventParticipantsResponse.self, from: data)
                 self.participants = participantsResponse.participants
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
-                // Handle authorization errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not authorized to view this event"
                 throw EventDetailError.apiError(errorMessage)
@@ -113,7 +104,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Fetch event budget information
     func fetchBudgetInfo(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -123,7 +113,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id}/budget endpoint
             guard let url = URL(string: "\(baseURL)/events/\(eventId)/budget") else {
                 throw EventDetailError.invalidURL
             }
@@ -138,7 +127,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging - print full response details
             print("Budget API Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Budget JSON: \(jsonString)")
@@ -151,7 +139,6 @@ final class EventDetailsViewModel: ObservableObject {
                     self.spentBudget = budget.realBudget
                 }
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
-                // Handle authorization errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not authorized to view this event's budget"
                 throw EventDetailError.apiError(errorMessage)
@@ -170,7 +157,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Fetch event leaderboard
     func fetchLeaderboard(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -180,7 +166,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id}/leaderboard endpoint
             guard let url = URL(string: "\(baseURL)/events/\(eventId)/leaderboard") else {
                 throw EventDetailError.invalidURL
             }
@@ -195,7 +180,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging - print full response details
             print("Leaderboard API Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Leaderboard JSON: \(jsonString)")
@@ -207,7 +191,6 @@ final class EventDetailsViewModel: ObservableObject {
                     self.leaderboard = leaderboardData.leaderboard
                 }
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
-                // Handle authorization errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not authorized to view this event's leaderboard"
                 throw EventDetailError.apiError(errorMessage)
@@ -226,7 +209,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Generate invite link
     func generateInviteLink(eventId: Int) async -> String? {
         isLoading = true
         defer { isLoading = false }
@@ -236,7 +218,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/invite endpoint
             guard let url = URL(string: "\(baseURL)/events/invite") else {
                 throw EventDetailError.invalidURL
             }
@@ -249,7 +230,6 @@ final class EventDetailsViewModel: ObservableObject {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.httpBody = try JSONEncoder().encode(inviteRequest)
             
-            // Print request body for debugging
             if let requestBody = request.httpBody {
                 printJSON(requestBody, label: "Invite Link Request")
             }
@@ -260,32 +240,27 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // Print response for debugging
             print("Invite Link Response Status: \(httpResponse.statusCode)")
             printJSON(data, label: "Invite Link Response")
             
             if httpResponse.statusCode == 200 {
-                // Try to decode the response directly first
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let inviteLink = json["invite_link"] as? String {
                     print("Successfully extracted invite_link from JSON dictionary")
                     return inviteLink
                 }
                 
-                // If direct decoding fails, try the wrapped version
                 if let inviteResponse = try? JSONDecoder().decode(APIResponse<GenerateInviteLinkResponse>.self, from: data),
                    let inviteData = inviteResponse.data {
                     print("Successfully decoded APIResponse<GenerateInviteLinkResponse>")
                     return inviteData.inviteLink
                 }
                 
-                // If both methods fail, try to decode just the GenerateInviteLinkResponse
                 if let directResponse = try? JSONDecoder().decode(GenerateInviteLinkResponse.self, from: data) {
                     print("Successfully decoded GenerateInviteLinkResponse directly")
                     return directResponse.inviteLink
                 }
                 
-                // If all decoding attempts fail, throw an error
                 throw EventDetailError.apiError("Failed to parse invite link from response")
             } else {
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
@@ -303,7 +278,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Update event details
     func updateEvent(eventId: Int, updateRequest: UpdateEventRequest) async -> (Bool, EventResponse?) {
         isLoading = true
         defer { isLoading = false }
@@ -313,7 +287,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id} endpoint with PUT method
             guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
                 throw EventDetailError.invalidURL
             }
@@ -330,13 +303,11 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Update Event Response JSON: \(jsonString)")
             }
             
             if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
-                // Try to decode the updated event
                 if let updatedEventResponse = try? JSONDecoder().decode(APIResponse<EventResponse>.self, from: data),
                    let updatedEvent = updatedEventResponse.data {
                     return (true, updatedEvent)
@@ -368,7 +339,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            // Using /events/{id} endpoint to check access
             guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
                 throw EventDetailError.invalidURL
             }
@@ -383,7 +353,6 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.invalidResponse
             }
             
-            // For debugging - print full response details
             print("Event Access Check Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Event Access Check JSON: \(jsonString)")
@@ -392,10 +361,8 @@ final class EventDetailsViewModel: ObservableObject {
             if httpResponse.statusCode == 200 {
                 hasAccess = true
                 
-                // Check if the current user is the event owner
                 if let eventResponse = try? JSONDecoder().decode(APIResponse<EventResponse>.self, from: data),
                    let event = eventResponse.data {
-                    // Get the current user ID from KeychainManager or UserDefaults
                     if let userId = await KeychainManager.shared.getUserId() {
                         isOwner = (event.organizerId == userId)
                     }
@@ -403,7 +370,6 @@ final class EventDetailsViewModel: ObservableObject {
                 
                 return true
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
-                // Handle authorization errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not a participant of this event"
                 hasAccess = false
@@ -429,7 +395,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Generate and copy invite link to clipboard
     func generateAndCopyInviteLink(eventId: Int) async {
         print("Generating invite link for event ID: \(eventId)")
         
@@ -440,12 +405,10 @@ final class EventDetailsViewModel: ObservableObject {
             
             print("Successfully generated invite link: \(inviteLink)")
             
-            // Copy to clipboard on the main thread
             DispatchQueue.main.async {
                 UIPasteboard.general.string = inviteLink
                 print("Copied link to clipboard: \(inviteLink)")
                 
-                // Show notification
                 self.showShareLinkCopied = true
                 print("Set showShareLinkCopied to true")
                 
@@ -458,7 +421,6 @@ final class EventDetailsViewModel: ObservableObject {
         } catch {
             print("Error generating invite link: \(error.localizedDescription)")
             
-            // Show error on the main thread
             DispatchQueue.main.async {
                 self.showError = true
                 if let eventError = error as? EventDetailError {
@@ -470,19 +432,16 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Start editing event name
     func startEditingName(currentName: String) {
         editedName = currentName
         isEditingName = true
     }
     
-    // Start editing event description
     func startEditingDescription(currentDescription: String?) {
         editedDescription = currentDescription ?? ""
         isEditingDescription = true
     }
     
-    // Start editing event date and time
     func startEditingDateTime(currentDateTime: String) {
         let dateFormatter = ISO8601DateFormatter()
         if let date = dateFormatter.date(from: currentDateTime) {
@@ -493,21 +452,17 @@ final class EventDetailsViewModel: ObservableObject {
         isEditingDateTime = true
     }
     
-    // Start editing event place
     func startEditingPlace(currentPlace: String?) {
         editedPlace = currentPlace ?? ""
         isEditingPlace = true
     }
     
-    // Start editing event budget
     func startEditingBudget(currentBudget: Double) {
         editedBudget = String(format: "%.0f", currentBudget)
         isEditingBudget = true
     }
     
-    // Save event edits
     func saveEventEdits(eventId: Int) async -> (Bool, EventResponse?) {
-        // Create update request with only the fields that were edited
         let updateRequest = UpdateEventRequest(
             name: isEditingName ? editedName : nil,
             description: isEditingDescription ? editedDescription : nil,
@@ -516,18 +471,15 @@ final class EventDetailsViewModel: ObservableObject {
             budget: isEditingBudget ? Double(editedBudget) : nil
         )
         
-        // Reset edit modes
         isEditingName = false
         isEditingDescription = false
         isEditingDateTime = false
         isEditingPlace = false
         isEditingBudget = false
         
-        // Update the event
         return await updateEvent(eventId: eventId, updateRequest: updateRequest)
     }
     
-    // Cancel editing
     func cancelEditing() {
         isEditingName = false
         isEditingDescription = false
@@ -536,7 +488,6 @@ final class EventDetailsViewModel: ObservableObject {
         isEditingBudget = false
     }
     
-    // Helper method to print JSON data for debugging
     private func printJSON(_ data: Data, label: String) {
         if let json = try? JSONSerialization.jsonObject(with: data),
            let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),

@@ -91,7 +91,6 @@ final class EventViewModel: ObservableObject {
             }
             
             if httpResponse.statusCode == 200 {
-                // Refresh events list after successful creation
                 await fetchEvents()
             } else {
                 let errorResponse = try JSONDecoder().decode(APIResponse<String>.self, from: data)

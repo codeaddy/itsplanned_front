@@ -13,6 +13,7 @@ struct TimeslotSuggestion: Identifiable, Codable {
         case busyCount = "busy_count"
     }
     
+    // Helper method to format the slot time nicely for display
     func formattedTime() -> String {
         // assuming slot comes in "2024-04-01 18:00" format
         if let spaceIndex = slot.firstIndex(of: " ") {

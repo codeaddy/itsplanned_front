@@ -9,7 +9,6 @@ struct ChatListView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Header
                 HStack {
                     Text("Чаты")
                         .font(.title2)
@@ -31,12 +30,10 @@ struct ChatListView: View {
                 .padding(.bottom, 16)
                 
                 if viewModel.chatThreads.isEmpty {
-                    // Empty state
                     EmptyChatsView(onNewChat: {
                         createAndNavigateToNewChat()
                     })
                 } else {
-                    // Chat list
                     List {
                         ForEach(viewModel.chatThreads) { thread in
                             Button(action: {
@@ -75,14 +72,12 @@ struct ChatListView: View {
                 .hidden()
             )
             .onAppear {
-                // Refresh chat list when the view appears
                 viewModel.loadSavedChats()
             }
         }
         .enableInjection()
     }
     
-    // Create a new chat and navigate to it directly
     private func createAndNavigateToNewChat() {
         Task { @MainActor in
             let newChatId = viewModel.createNewChat()
@@ -91,7 +86,6 @@ struct ChatListView: View {
     }
 }
 
-// Separate component for empty state
 struct EmptyChatsView: View {
     let onNewChat: () -> Void
     
@@ -136,7 +130,6 @@ struct EmptyChatsView: View {
     }
 }
 
-// LazyView for deferred loading
 struct LazyView<Content: View>: View {
     let build: () -> Content
     
@@ -152,14 +145,12 @@ struct LazyView<Content: View>: View {
 struct ChatThreadRow: View {
     let thread: ChatThread
     
-    // Cache for formatted date to avoid recalculation
     private var formattedDate: String {
         thread.shortFormattedDate
     }
     
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar or icon
             ZStack {
                 Circle()
                     .fill(Color.blue.opacity(0.2))
@@ -170,7 +161,6 @@ struct ChatThreadRow: View {
                     .font(.system(size: 24))
             }
             
-            // Chat details
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(thread.title)

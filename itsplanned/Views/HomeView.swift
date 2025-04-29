@@ -15,7 +15,6 @@ struct HomeView: View {
                 Text("Вы успешно вошли в систему")
                     .foregroundColor(.secondary)
                 
-                // Display user's email
                 if let email = UserDefaults.standard.email {
                     Text("Email: \(email)")
                         .foregroundColor(.secondary)

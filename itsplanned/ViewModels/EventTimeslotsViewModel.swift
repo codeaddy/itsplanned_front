@@ -38,7 +38,6 @@ class EventTimeslotsViewModel: ObservableObject {
     
     private let baseURL = "http://localhost:8080"
     
-    // Fetch available timeslots for the given event and date
     func fetchTimeslots(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -48,12 +47,10 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.unauthorized
             }
             
-            // Format the date for the API request
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let dateString = dateFormatter.string(from: date)
             
-            // Format the start and end times
             let timeFormatter = DateFormatter()
             timeFormatter.dateFormat = "HH:mm"
             let startTimeString = timeFormatter.string(from: startTime)
@@ -63,7 +60,6 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.invalidURL
             }
             
-            // Create the request body
             let timeslotRequest = FindBestTimeSlotsRequest(
                 eventId: eventId,
                 date: dateString,
@@ -84,31 +80,26 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.invalidResponse
             }
             
-            // For debugging - print full response details
             logger.debug("Timeslots API Response Status: \(httpResponse.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
                 logger.debug("Timeslots JSON: \(jsonString)")
             }
             
             if httpResponse.statusCode == 200 {
-                // Try to decode using the APIResponse wrapper first
                 let apiResponse = try JSONDecoder().decode(APIResponse<FindBestTimeSlotsResponse>.self, from: data)
                 if let responseData = apiResponse.data {
                     self.timeslots = responseData.suggestions.sorted { $0.busyCount < $1.busyCount }
                 } else if let errorMessage = apiResponse.error {
                     throw TimeslotError.apiError(errorMessage)
                 } else {
-                    // Try direct decoding
                     let directResponse = try JSONDecoder().decode(FindBestTimeSlotsResponse.self, from: data)
                     self.timeslots = directResponse.suggestions.sorted { $0.busyCount < $1.busyCount }
                 }
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
-                // Handle authorization errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not authorized to view this event's timeslots"
                 throw TimeslotError.apiError(errorMessage)
             } else {
-                // Handle other errors
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 throw TimeslotError.apiError(errorResponse?.error ?? "Failed to fetch timeslots")
             }
@@ -123,7 +114,6 @@ class EventTimeslotsViewModel: ObservableObject {
         }
     }
     
-    // Update the event with the selected timeslot
     func updateEventTime(eventId: Int) async -> (Bool, EventResponse?) {
         guard let selectedTimeslot = selectedTimeslot else {
             errorMessage = "No timeslot selected"
@@ -143,10 +133,8 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.invalidURL
             }
             
-            // Logging for debugging
             logger.debug("Selected timeslot: \(selectedTimeslot.slot)")
             
-            // Parse the selected timeslot to create a Date
             let inputFormatter = DateFormatter()
             inputFormatter.dateFormat = "yyyy-MM-dd HH:mm"
             
@@ -155,14 +143,12 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.apiError("Invalid date format")
             }
             
-            // Convert to ISO 8601 format
             let iso8601Formatter = ISO8601DateFormatter()
             iso8601Formatter.formatOptions = [.withInternetDateTime]
             let isoDateString = iso8601Formatter.string(from: selectedDate)
             
             logger.debug("Converted ISO date: \(isoDateString)")
             
-            // Create the update request
             let updateRequest = UpdateEventRequest(
                 name: nil,
                 description: nil,
@@ -176,7 +162,6 @@ class EventTimeslotsViewModel: ObservableObject {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             
-            // Log the request body for debugging
             let jsonData = try JSONEncoder().encode(updateRequest)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 logger.debug("Update request body: \(jsonString)")
@@ -185,7 +170,6 @@ class EventTimeslotsViewModel: ObservableObject {
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            // Log the response for debugging
             if let responseString = String(data: data, encoding: .utf8) {
                 logger.debug("Update response: \(responseString)")
             }
@@ -197,9 +181,7 @@ class EventTimeslotsViewModel: ObservableObject {
             logger.debug("Update response status code: \(httpResponse.statusCode)")
             
             if httpResponse.statusCode == 200 {
-                // Try different decoding approaches
                 do {
-                    // First try: parse with APIResponse wrapper
                     let eventResponse = try JSONDecoder().decode(APIResponse<EventResponse>.self, from: data)
                     if let updatedEvent = eventResponse.data {
                         return (true, updatedEvent)
@@ -209,7 +191,6 @@ class EventTimeslotsViewModel: ObservableObject {
                 } catch {
                     logger.error("First decoding attempt failed: \(error.localizedDescription)")
                     
-                    // Second try: direct decoding of EventResponse
                     do {
                         let directEvent = try JSONDecoder().decode(EventResponse.self, from: data)
                         return (true, directEvent)
@@ -219,13 +200,11 @@ class EventTimeslotsViewModel: ObservableObject {
                     }
                 }
             } else {
-                // Handle API errors
                 do {
                     let errorResponse = try JSONDecoder().decode(APIResponse<String>.self, from: data)
                     let errorMsg = errorResponse.error ?? errorResponse.message ?? "Failed to update event time"
                     throw TimeslotError.apiError(errorMsg)
                 } catch {
-                    // If can't decode the error response
                     if let responseText = String(data: data, encoding: .utf8) {
                         throw TimeslotError.apiError("Server error: \(responseText)")
                     } else {
@@ -234,7 +213,6 @@ class EventTimeslotsViewModel: ObservableObject {
                 }
             }
             
-            // If we get here, something unexpected happened
             throw TimeslotError.apiError("Unexpected error updating event time")
         } catch {
             showError = true
@@ -248,7 +226,6 @@ class EventTimeslotsViewModel: ObservableObject {
         }
     }
     
-    // Change the date and fetch new timeslots
     func changeDate(to newDate: Date, eventId: Int) async {
         self.date = newDate
         await fetchTimeslots(eventId: eventId)

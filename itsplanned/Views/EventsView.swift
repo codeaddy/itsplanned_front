@@ -6,7 +6,6 @@ struct EventsView: View {
     @ObservedObject var viewModel: EventViewModel
     @State private var showingCreateEvent = false
     
-    // Simplified modal state - we'll only use a single piece of state
     @State private var selectedEvent: EventResponse? = nil
     
     var body: some View {
@@ -31,7 +30,6 @@ struct EventsView: View {
                                 isUpcoming: true
                             ) {
                                 print("Tapped on CURRENT event: \(event.id) - \(event.name)")
-                                // Directly set the selected event
                                 selectedEvent = event
                             }
                         }
@@ -52,7 +50,6 @@ struct EventsView: View {
                                 isUpcoming: false
                             ) {
                                 print("Tapped on PAST event: \(event.id) - \(event.name)")
-                                // Directly set the selected event
                                 selectedEvent = event
                             }
                         }
@@ -102,10 +99,8 @@ struct EventsView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        // Use sheet presentation directly with the event
         .sheet(item: $selectedEvent) { event in
             NavigationStack {
-                // Direct binding to the event
                 EventDetailsView(event: Binding(
                     get: { event },
                     set: { updatedEvent in
@@ -115,7 +110,7 @@ struct EventsView: View {
                         }
                     }
                 ))
-                .id(event.id) // Force view recreation for new events
+                .id(event.id)
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -140,7 +135,7 @@ struct EventsView: View {
             return false
         }
         let now = Date()
-        return eventDate <= now && eventDate.addingTimeInterval(3600) > now // Consider "now" if within the next hour
+        return eventDate <= now && eventDate.addingTimeInterval(3600) > now
     }
 }
 
@@ -195,7 +190,6 @@ extension EventViewModel {
     static var preview: EventViewModel {
         let viewModel = EventViewModel()
         
-        // Create sample events
         let currentEvent = EventResponse(
             id: 1,
             createdAt: "2024-03-16T10:00:00Z",
@@ -256,7 +250,6 @@ extension EventViewModel {
             organizerId: 1
         )
         
-        // Set the events in the view model
         viewModel.events = [currentEvent, upcomingEvent1, upcomingEvent2, pastEvent1, pastEvent2]
         
         return viewModel

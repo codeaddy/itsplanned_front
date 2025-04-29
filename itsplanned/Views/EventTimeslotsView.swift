@@ -10,10 +10,8 @@ struct EventTimeslotsView: View {
     let eventId: Int
     @Binding var event: EventResponse
     
-    // Initial loading task
     @State private var loadingTask: Task<Void, Never>? = nil
     
-    // Animation state
     @State private var isRefreshing = false
     
     var body: some View {
@@ -22,7 +20,6 @@ struct EventTimeslotsView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom title bar
                 HStack {
                     Button {
                         dismiss()
@@ -40,7 +37,6 @@ struct EventTimeslotsView: View {
                     
                     Spacer()
                     
-                    // Empty spacer to balance the layout
                     Color.clear
                         .frame(width: 30, height: 30)
                 }
@@ -48,9 +44,7 @@ struct EventTimeslotsView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 16)
                 
-                // Filter section
                 VStack(spacing: 0) {
-                    // Date picker
                     HStack {
                         Image(systemName: "calendar")
                             .foregroundColor(.blue)
@@ -72,7 +66,6 @@ struct EventTimeslotsView: View {
                     .cornerRadius(10)
                     .padding(.horizontal)
                     
-                    // Time range
                     VStack(spacing: 0) {
                         HStack {
                             Text("С")
@@ -89,7 +82,6 @@ struct EventTimeslotsView: View {
                         .padding(.bottom, 4)
                         
                         HStack(spacing: 16) {
-                            // Start time picker with icon
                             HStack {
                                 Image(systemName: "clock")
                                     .foregroundColor(.green)
@@ -105,7 +97,6 @@ struct EventTimeslotsView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(8)
                             
-                            // End time picker with icon
                             HStack {
                                 Image(systemName: "clock.fill")
                                     .foregroundColor(.red)
@@ -129,7 +120,6 @@ struct EventTimeslotsView: View {
                     .padding(.horizontal)
                     .padding(.top, 12)
                     
-                    // Duration
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "hourglass")
@@ -169,9 +159,7 @@ struct EventTimeslotsView: View {
                     .padding(.horizontal)
                     .padding(.top, 12)
                     
-                    // Control buttons
                     HStack(spacing: 12) {
-                        // Refresh button
                         Button {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                                 isRefreshing = true
@@ -196,7 +184,6 @@ struct EventTimeslotsView: View {
                             .cornerRadius(10)
                         }
                         
-                        // Apply filters button
                         Button {
                             Task { await viewModel.fetchTimeslots(eventId: eventId) }
                         } label: {
@@ -217,15 +204,12 @@ struct EventTimeslotsView: View {
                 }
                 .padding(.bottom, 16)
                 
-                // Timeslot bubbles section
                 ZStack {
-                    // Background
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color(.systemBackground))
                         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 1)
                     
                     VStack {
-                        // Title
                         Text("Доступные временные слоты")
                             .font(.headline)
                             .foregroundColor(.secondary)
@@ -257,7 +241,6 @@ struct EventTimeslotsView: View {
                             .padding()
                             Spacer()
                         } else {
-                            // Compact bubbles layout
                             CompactBubblesLayout(
                                 timeslots: viewModel.timeslots,
                                 selectedTimeslot: $viewModel.selectedTimeslot
@@ -271,7 +254,6 @@ struct EventTimeslotsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal)
                 
-                // Save button
                 Button {
                     Task {
                         let (success, updatedEvent) = await viewModel.updateEventTime(eventId: eventId)
@@ -294,7 +276,7 @@ struct EventTimeslotsView: View {
                 .disabled(viewModel.selectedTimeslot == nil)
             }
         }
-        .preferredColorScheme(.light) // Force light mode to match screenshot
+        .preferredColorScheme(.light)
         .alert(isPresented: $viewModel.showError) {
             Alert(
                 title: Text("Ошибка"),
@@ -329,7 +311,6 @@ struct CompactBubblesLayout: View {
         let maxBusyCount = max(1, timeslots.map { $0.busyCount }.max() ?? 1)
         
         return timeslots.map { timeslot in
-            // smaller busy count = larger bubble
             let sizeRange: (min: CGFloat, max: CGFloat) = (90, 110)
             let normalizedValue = 1.0 - Double(timeslot.busyCount - minBusyCount) / Double(max(1, maxBusyCount - minBusyCount))
             return sizeRange.min + (sizeRange.max - sizeRange.min) * normalizedValue
@@ -525,9 +506,6 @@ struct CompactTimeslotBubble: View {
     }
 }
 
-// Helper extensions
-
-// Helper extension for hex colors
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -535,11 +513,11 @@ extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
+        case 3:
             (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
+        case 6:
             (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
+        case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
             (a, r, g, b) = (1, 1, 1, 0)
@@ -554,7 +532,6 @@ extension Color {
     }
 }
 
-// Helper extension for rounded corners
 extension View {
     func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
         clipShape(RoundedCorner(radius: radius, corners: corners))
@@ -571,7 +548,6 @@ struct RoundedCorner: Shape {
     }
 }
 
-// Helper extension for safe array access
 extension Array {
     subscript(safe index: Index) -> Element? {
         return indices.contains(index) ? self[index] : nil

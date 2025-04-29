@@ -1,21 +1,29 @@
 import SwiftUI
 import Inject
+import SafariServices
+import OSLog
+
+private let logger = Logger(subsystem: "com.itsplanned", category: "UserProfile")
 
 struct UserProfileView: View {
     @ObserveInjection var inject
     @ObservedObject var authViewModel: AuthViewModel
     @StateObject private var profileViewModel = UserProfileViewModel()
+    @StateObject private var googleCalendarViewModel = GoogleCalendarViewModel()
     @State private var showingImagePicker = false
     @State private var isEditingUsername = false
     @State private var editedUsername = ""
     @State private var selectedImage: UIImage?
+    @State private var showingSafari = false
+    @State private var googleAuthURL: URL?
+    @State private var showingSuccessMessage = false
+    @State private var successMessage = ""
     // Track active tasks to avoid memory leaks
     @State private var activeTask: Task<Void, Never>?
     
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Profile header with title
                 Text("Профиль")
                     .font(.title)
                     .fontWeight(.bold)
@@ -23,16 +31,12 @@ struct UserProfileView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 40)
                 
-                // Profile image with name and email
                 VStack(spacing: 24) {
-                    // Profile image
                     ZStack {
-                        // Profile image background
                         Circle()
                             .fill(Color(.systemGray6))
                             .frame(width: 120, height: 120)
                         
-                        // Profile image
                         if let user = authViewModel.currentUser, let avatarURL = user.avatar, !avatarURL.isEmpty {
                             AsyncImage(url: URL(string: avatarURL)) { image in
                                 image
@@ -51,7 +55,6 @@ struct UserProfileView: View {
                                 .foregroundColor(.gray)
                         }
                         
-                        // Show loading indicator when uploading image
                         if profileViewModel.isImageLoading {
                             ProgressView()
                                 .scaleEffect(1.5)
@@ -62,7 +65,6 @@ struct UserProfileView: View {
                         showingImagePicker = true
                     }
                     
-                    // User name and email
                     if let user = authViewModel.currentUser {
                         Text(user.displayName)
                             .font(.title2)
@@ -75,14 +77,12 @@ struct UserProfileView: View {
                 }
                 .padding(.bottom, 40)
                 
-                // Username edit section
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Изменить никнейм")
                         .font(.headline)
                         .foregroundColor(.gray)
                     
                     if isEditingUsername {
-                        // Editing mode
                         HStack {
                             TextField("Никнейм", text: $editedUsername)
                                 .padding()
@@ -92,16 +92,12 @@ struct UserProfileView: View {
                             Button(action: {
                                 guard let userId = authViewModel.currentUser?.id else { return }
                                 
-                                // Cancel any previous task
                                 activeTask?.cancel()
                                 
-                                // Start a new task
                                 activeTask = Task {
                                     if await profileViewModel.updateDisplayName(userId: userId, newName: editedUsername) {
-                                        // Refresh user profile after successful update
                                         await authViewModel.refreshUserProfile()
                                     }
-                                    // Set editing mode to false on main thread
                                     await MainActor.run {
                                         isEditingUsername = false
                                     }
@@ -120,7 +116,6 @@ struct UserProfileView: View {
                             .disabled(profileViewModel.isLoading)
                         }
                     } else {
-                        // Display mode with edit button
                         HStack {
                             if let user = authViewModel.currentUser {
                                 Text(user.displayName)
@@ -145,9 +140,51 @@ struct UserProfileView: View {
                 }
                 .padding(.horizontal)
                 
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Google Calendar")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                        .padding(.top, 24)
+                    
+                    Button(action: {
+                        if googleCalendarViewModel.isConnected {
+                            // If already connected, trigger calendar import
+                            importGoogleCalendar()
+                        } else {
+                            // If not connected, start the connection process
+                            connectGoogleCalendar()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: googleCalendarViewModel.isConnected ? "calendar.badge.clock" : "calendar")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 18))
+                            
+                            Text(googleCalendarViewModel.isConnected ? "Импортировать события из Google Calendar" : "Подключить Google Calendar")
+                                .font(.headline)
+                                .foregroundColor(.blue)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            
+                            Spacer()
+                            
+                            if googleCalendarViewModel.isConnected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.system(size: 20))
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                    }
+                    .disabled(googleCalendarViewModel.isLoading)
+                }
+                .padding(.horizontal)
+                
                 Spacer()
                 
-                // Logout button
                 Button(action: {
                     authViewModel.logout()
                 }) {
@@ -171,29 +208,161 @@ struct UserProfileView: View {
                 Text("Image picker will be implemented in the future")
                     .padding()
             }
+            .sheet(isPresented: $showingSafari) {
+                if let url = googleAuthURL {
+                    SafariView(url: url, onFinish: {
+                        showingSafari = false
+                    })
+                    .edgesIgnoringSafeArea(.all)
+                }
+            }
             .alert("Ошибка", isPresented: $profileViewModel.showError) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(profileViewModel.error ?? "Произошла неизвестная ошибка")
             }
+            .alert("Ошибка", isPresented: $googleCalendarViewModel.showError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(googleCalendarViewModel.error ?? "Произошла неизвестная ошибка при подключении Google Calendar")
+            }
+            .alert("Успешно", isPresented: $showingSuccessMessage) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(successMessage)
+            }
             
-            // Show loading overlay
-            if profileViewModel.isLoading {
+            if profileViewModel.isLoading || googleCalendarViewModel.isLoading {
                 Color.black.opacity(0.2)
                     .ignoresSafeArea()
+                
+                if googleCalendarViewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.5)
+                }
             }
         }
-        // Cancel any active tasks when the view disappears
         .onDisappear {
             activeTask?.cancel()
             activeTask = nil
         }
+        .onOpenURL { url in
+            handleGoogleAuthCallback(url: url)
+        }
+        .onAppear {
+            Task {
+                await googleCalendarViewModel.checkCalendarConnection()
+            }
+        }
         .enableInjection()
+    }
+    
+    private func connectGoogleCalendar() {
+        Task {
+            await MainActor.run {
+                googleCalendarViewModel.isLoading = true
+            }
+            
+            if let url = await googleCalendarViewModel.getGoogleAuthURL() {
+                await MainActor.run {
+                    googleCalendarViewModel.isLoading = false
+                    googleAuthURL = url
+                    showingSafari = true
+                }
+            } else {
+                await MainActor.run {
+                    googleCalendarViewModel.isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func importGoogleCalendar() {
+        Task {
+            let success = await googleCalendarViewModel.importCalendarEvents()
+            if success {
+                await MainActor.run {
+                    showSuccessMessage("События успешно импортированы из Google Calendar")
+                }
+            }
+        }
+    }
+    
+    private func showSuccessMessage(_ message: String) {
+        successMessage = message
+        showingSuccessMessage = true
+    }
+    
+    private func handleGoogleAuthCallback(url: URL) {
+        logger.info("Received URL callback: \(url.absoluteString)")
+        
+        guard url.absoluteString.starts(with: googleCalendarViewModel.redirectURI) else {
+            logger.error("URL does not match expected callback URI: \(url.absoluteString)")
+            return
+        }
+        
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+              let queryItems = components.queryItems,
+              let code = queryItems.first(where: { $0.name == "code" })?.value else {
+            logger.error("Failed to extract auth code from callback URL: \(url.absoluteString)")
+            return
+        }
+        
+        logger.info("Extracted auth code from URL callback")
+        
+        Task {
+            let success = await googleCalendarViewModel.handleCallback(code: code)
+            
+            await MainActor.run {
+                showingSafari = false
+                
+                if success {
+                    showSuccessMessage("Google Calendar успешно подключен")
+                }
+            }
+        }
+    }
+}
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    var onFinish: () -> Void = {}
+
+    func makeUIViewController(context: UIViewControllerRepresentableContext<SafariView>) -> SFSafariViewController {
+        let config = SFSafariViewController.Configuration()
+        config.entersReaderIfAvailable = false
+        config.barCollapsingEnabled = true
+        
+        let safariViewController = SFSafariViewController(url: url, configuration: config)
+        safariViewController.preferredControlTintColor = .blue
+        safariViewController.dismissButtonStyle = .close
+        safariViewController.delegate = context.coordinator
+        
+        return safariViewController
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: UIViewControllerRepresentableContext<SafariView>) {
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, SFSafariViewControllerDelegate {
+        let parent: SafariView
+        
+        init(_ parent: SafariView) {
+            self.parent = parent
+        }
+        
+        func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+            parent.onFinish()
+        }
     }
 }
 
 #Preview {
-    // Create a mock user for preview
     let viewModel = AuthViewModel()
     let previewUser = UserResponse(
         id: 1,
@@ -205,7 +374,6 @@ struct UserProfileView: View {
         updatedAt: "2023-01-01T00:00:00Z"
     )
     
-    // Set the currentUser property using the method
     viewModel.setCurrentUserForPreview(previewUser)
     
     return UserProfileView(authViewModel: viewModel)

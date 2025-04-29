@@ -12,12 +12,10 @@ struct EventLeaderboardView: View {
     @State private var isInitiallyLoading = true
     @State private var loadingTask: Task<Void, Never>? = nil
     
-    // Added initializer for Preview
     init(eventId: Int, eventName: String, previewData: [LeaderboardUser]? = nil, currentUserPosition: Int? = nil, currentUserEntry: LeaderboardUser? = nil) {
         self.eventId = eventId
         self.eventName = eventName
         
-        // If preview data is provided, inject it
         if let previewData = previewData {
             _viewModel = StateObject(wrappedValue: {
                 let vm = EventLeaderboardViewModel()
@@ -36,7 +34,6 @@ struct EventLeaderboardView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Background
             Color(.systemBackground)
                 .ignoresSafeArea()
             
@@ -97,11 +94,9 @@ struct EventLeaderboardView: View {
                             .padding()
                             .frame(height: 400)
                         } else {
-                            // Top 3 podium section
                             topThreePodium
                                 .padding(.bottom, 40)
                             
-                            // Full leaderboard list
                             leaderboardList
                                 .padding(.bottom, 20)
                         }
@@ -111,7 +106,6 @@ struct EventLeaderboardView: View {
         }
         .onAppear {
             print("EventLeaderboardView appeared")
-            // Start loading data
             startLoadingProcess()
         }
         .onChange(of: viewModel.leaderboardUsers.count) { newCount in
@@ -119,7 +113,6 @@ struct EventLeaderboardView: View {
         }
         .onDisappear {
             print("EventLeaderboardView disappeared")
-            // Clean up when view disappears
             loadingTask?.cancel()
             loadingTask = nil
         }
@@ -131,7 +124,6 @@ struct EventLeaderboardView: View {
         .enableInjection()
     }
     
-    // Top 3 participants podium display
     private var topThreePodium: some View {
         HStack(alignment: .bottom, spacing: 0) {
             // Second place
@@ -148,7 +140,6 @@ struct EventLeaderboardView: View {
                     .frame(width: 80)
             }
             
-            // First place (center, taller, with crown)
             if !viewModel.leaderboardUsers.isEmpty {
                 let user = viewModel.leaderboardUsers[0]
                 VStack(spacing: 0) {
@@ -158,9 +149,7 @@ struct EventLeaderboardView: View {
                         .foregroundColor(Color.yellow)
                         .padding(.bottom, 2)
                     
-                    // Profile image with position
                     ZStack {
-                        // Avatar background circle
                         Circle()
                             .fill(Color(.systemGray5))
                             .frame(width: 80, height: 80)
@@ -169,7 +158,6 @@ struct EventLeaderboardView: View {
                                     .stroke(Color.yellow, lineWidth: 3)
                             )
                         
-                        // Avatar or placeholder
                         if let avatar = user.avatar, !avatar.isEmpty {
                             AsyncImage(url: URL(string: avatar)) { image in
                                 image
@@ -188,7 +176,6 @@ struct EventLeaderboardView: View {
                                 .foregroundColor(.gray)
                         }
                         
-                        // Position number
                         ZStack {
                             Circle()
                                 .fill(Color.yellow)
@@ -205,7 +192,6 @@ struct EventLeaderboardView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    // Show non-negative score for first place
                     Text("\(max(0, Int(user.score))) \(scoreEndingRussian(score: Int(user.score)))")
                         .font(.subheadline)
                         .foregroundColor(.gray)
@@ -216,7 +202,6 @@ struct EventLeaderboardView: View {
                     .frame(width: 100)
             }
             
-            // Third place
             if viewModel.leaderboardUsers.count >= 3 {
                 let user = viewModel.leaderboardUsers[2]
                 participantPodiumView(
@@ -233,17 +218,13 @@ struct EventLeaderboardView: View {
         .padding(.horizontal)
     }
     
-    // Individual podium view for 2nd and 3rd place
     private func participantPodiumView(position: Int, name: String, score: Int, avatar: String?) -> some View {
         VStack(spacing: 0) {
-            // Profile image with position
             ZStack {
-                // Avatar background circle
                 Circle()
                     .fill(position == 2 ? Color.blue.opacity(0.2) : Color.orange.opacity(0.3))
                     .frame(width: 70, height: 70)
                 
-                // Avatar or placeholder
                 if let avatar = avatar, !avatar.isEmpty {
                     AsyncImage(url: URL(string: avatar)) { image in
                         image
@@ -262,7 +243,6 @@ struct EventLeaderboardView: View {
                         .foregroundColor(.gray)
                 }
                 
-                // Position number
                 ZStack {
                     Circle()
                         .fill(position == 2 ? Color.blue : Color.orange)
@@ -280,24 +260,19 @@ struct EventLeaderboardView: View {
                 .foregroundColor(.primary)
                 .padding(.top, 20)
             
-            // Show non-negative score
             Text("\(max(0, score)) \(scoreEndingRussian(score: score))")
                 .font(.subheadline)
                 .foregroundColor(.gray)
         }
     }
     
-    // Full leaderboard list
     private var leaderboardList: some View {
         VStack(spacing: 0) {
-            // List of all participants
             ForEach(viewModel.leaderboardUsers.prefix(3)) { user in
                 leaderboardRow(user: user, highlight: user.position <= 3)
             }
             
-            // If current user is not in top 3, show them separately
             if let currentUser = viewModel.currentUserEntry, currentUser.position > 3 {
-                // Spacer with line to visually separate if user is not in top 3
                 VStack(spacing: 8) {
                     HStack {
                         Spacer()
@@ -307,25 +282,20 @@ struct EventLeaderboardView: View {
                     }
                     .padding(.vertical, 10)
                     
-                    // Current user row
                     leaderboardRow(user: currentUser, highlight: false, isCurrentUser: true)
                 }
             }
         }
     }
     
-    // Individual leaderboard row
     private func leaderboardRow(user: LeaderboardUser, highlight: Bool, isCurrentUser: Bool = false) -> some View {
         HStack(spacing: 15) {
-            // Position indicator
             HStack(spacing: 5) {
                 if user.position <= 3 {
-                    // For top 3, show a green arrow up
                     Image(systemName: "arrow.up")
                         .foregroundColor(.green)
                         .font(.caption)
                 } else if isCurrentUser {
-                    // For current user outside top 3, show a dash
                     Image(systemName: "minus")
                         .foregroundColor(.gray)
                         .font(.caption)
@@ -337,9 +307,7 @@ struct EventLeaderboardView: View {
             }
             .frame(width: 30, alignment: .leading)
             
-            // User avatar
             ZStack {
-                // Avatar background
                 Circle()
                     .fill(avatarBackgroundColor(position: user.position))
                     .frame(width: 40, height: 40)
@@ -361,14 +329,12 @@ struct EventLeaderboardView: View {
                 }
             }
             
-            // User name
             Text(user.displayName)
                 .font(.headline)
                 .foregroundColor(.primary)
             
             Spacer()
             
-            // Score with proper Russian noun ending
             Text("\(max(0, Int(user.score))) \(scoreEndingRussian(score: Int(user.score)))")
                 .font(.subheadline)
                 .foregroundColor(.gray)
@@ -380,7 +346,6 @@ struct EventLeaderboardView: View {
         .padding(.bottom, 10)
     }
     
-    // Helper function to get proper Russian word ending for points
     private func scoreEndingRussian(score: Int) -> String {
         let points = max(0, score)
         
@@ -401,7 +366,6 @@ struct EventLeaderboardView: View {
         }
     }
     
-    // Background color for different positions in the list
     private func rowBackgroundColor(position: Int, isCurrentUser: Bool) -> Color {
         if position == 1 {
             return Color.yellow.opacity(0.2)
@@ -416,7 +380,6 @@ struct EventLeaderboardView: View {
         }
     }
     
-    // Avatar background color based on position
     private func avatarBackgroundColor(position: Int) -> Color {
         if position == 1 {
             return Color.yellow.opacity(0.3)
@@ -429,24 +392,19 @@ struct EventLeaderboardView: View {
         }
     }
     
-    // Start the loading process
     private func startLoadingProcess() {
         print("Starting leaderboard loading process")
-        // Cancel any previous task
         loadingTask?.cancel()
         loadingTask = nil
         
-        // Set loading state
         isInitiallyLoading = true
         
-        // Create a new loading task
         loadingTask = Task {
             do {
                 print("Fetching leaderboard data for event ID: \(eventId)")
                 await viewModel.fetchLeaderboard(eventId: eventId)
                 
-                // Short delay to ensure smooth UI transition
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                try await Task.sleep(nanoseconds: 500_000_000)
                 
                 await MainActor.run {
                     print("Loading completed, leaderboard has \(viewModel.leaderboardUsers.count) entries")
@@ -463,7 +421,6 @@ struct EventLeaderboardView: View {
 }
 
 #Preview {
-    // Create sample users
     let sampleUsers = [
         LeaderboardUser(id: 0, userId: 1, displayName: "Максим", score: 200, position: 1, avatar: nil),
         LeaderboardUser(id: 1, userId: 2, displayName: "Алексей", score: 150, position: 2, avatar: nil),
@@ -471,7 +428,6 @@ struct EventLeaderboardView: View {
         LeaderboardUser(id: 3, userId: 12, displayName: "Мария", score: 75, position: 12, avatar: nil)
     ]
     
-    // Return view with preview data
     return EventLeaderboardView(
         eventId: 1, 
         eventName: "Встреча команды",

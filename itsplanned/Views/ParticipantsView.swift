@@ -10,12 +10,10 @@ struct ParticipantsView: View {
     let eventName: String
     @State private var isInitiallyLoading = true
     
-    // Optional initializer for preview testing
     init(eventId: Int, eventName: String, preloadedViewModel: ParticipantsViewModel? = nil) {
         self.eventId = eventId
         self.eventName = eventName
         
-        // If a preloaded viewModel is provided, use it
         if let preloadedViewModel = preloadedViewModel {
             _viewModel = StateObject(wrappedValue: preloadedViewModel)
         }
@@ -39,7 +37,6 @@ struct ParticipantsView: View {
                 }
             } else {
                 VStack(spacing: 0) {
-                    // Header section with safe area padding
                     VStack(spacing: 16) {
                         HStack {
                             Button(action: { dismiss() }) {
@@ -56,7 +53,6 @@ struct ParticipantsView: View {
                             
                             Spacer()
                             
-                            // Invisible element to balance the header
                             Image(systemName: "arrow.left")
                                 .foregroundColor(.clear)
                                 .font(.system(size: 20))
@@ -70,7 +66,6 @@ struct ParticipantsView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         
-                        // Search bar
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.gray)
@@ -95,7 +90,6 @@ struct ParticipantsView: View {
                         .cornerRadius(10)
                         .padding(.horizontal)
                         
-                        // Participants count
                         HStack {
                             Text("Всего участников: \(viewModel.participants.count)")
                                 .font(.subheadline)
@@ -110,9 +104,7 @@ struct ParticipantsView: View {
                     
                     Divider()
                     
-                    // Participants list
                     if viewModel.filteredParticipants.isEmpty {
-                        // Show empty state
                         if viewModel.searchText.isEmpty {
                             VStack(spacing: 20) {
                                 Spacer()
@@ -135,7 +127,6 @@ struct ParticipantsView: View {
                             }
                             .frame(maxWidth: .infinity)
                         } else {
-                            // No search results
                             VStack(spacing: 20) {
                                 Spacer()
                                 
@@ -158,7 +149,6 @@ struct ParticipantsView: View {
                             .frame(maxWidth: .infinity)
                         }
                     } else {
-                        // Show participants list
                         ScrollView {
                             LazyVStack(spacing: 0) {
                                 ForEach(viewModel.filteredParticipants) { participant in
@@ -176,19 +166,16 @@ struct ParticipantsView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            // If we have preloaded data, immediately show content
             if !viewModel.participants.isEmpty {
                 isInitiallyLoading = false
             }
         }
         .task {
-            // If we're not using a preloaded viewModel for preview
             if viewModel.participants.isEmpty {
                 // Fetch participants from the API
                 await viewModel.fetchParticipants(eventId: eventId)
             }
             
-            // Always set loading to false when done
             isInitiallyLoading = false
         }
         .alert("Ошибка", isPresented: $viewModel.showError) {
@@ -205,7 +192,6 @@ struct ParticipantRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Avatar or placeholder
             ZStack {
                 Circle()
                     .fill(Color.blue.opacity(0.2))
@@ -257,12 +243,10 @@ struct ParticipantsDestinationView: View {
     let eventName: String
     @State private var isInitiallyLoading = true
     
-    // Optional initializer for preview testing
     init(eventId: Int, eventName: String, preloadedViewModel: ParticipantsViewModel? = nil) {
         self.eventId = eventId
         self.eventName = eventName
         
-        // If a preloaded viewModel is provided, use it
         if let preloadedViewModel = preloadedViewModel {
             _viewModel = StateObject(wrappedValue: preloadedViewModel)
         }
@@ -290,13 +274,11 @@ struct ParticipantsDestinationView: View {
             }
         }
         .onAppear {
-            // For preview, if the viewModel is preloaded, skip the loading screen
             if !viewModel.participants.isEmpty {
                 isInitiallyLoading = false
             }
         }
         .task {
-            // Skip task if we already have participants data
             if !viewModel.participants.isEmpty {
                 return
             }
@@ -309,7 +291,6 @@ struct ParticipantsDestinationView: View {
     }
 }
 
-// Preview
 struct ParticipantsView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
@@ -325,11 +306,10 @@ struct ParticipantsView_Previews: PreviewProvider {
     }
 }
 
-// Updated preview for easier testing
 #Preview("Participants View") {
     NavigationView {
         let preloadedViewModel = ParticipantsViewModel()
-        preloadedViewModel.loadTestData() // Pre-load test data
+        preloadedViewModel.loadTestData()
         
         return ParticipantsView(
             eventId: 1,
@@ -339,11 +319,10 @@ struct ParticipantsView_Previews: PreviewProvider {
     }
 }
 
-// Preview for destination view
 #Preview("Destination View") {
     NavigationView {
         let preloadedViewModel = ParticipantsViewModel()
-        preloadedViewModel.loadTestData() // Pre-load test data
+        preloadedViewModel.loadTestData()
         
         return ParticipantsDestinationView(
             eventId: 1,

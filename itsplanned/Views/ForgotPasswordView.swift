@@ -25,7 +25,6 @@ struct ForgotPasswordView: View {
                     .multilineTextAlignment(.center)
                 
                 VStack(spacing: 16) {
-                    // Email field
                     HStack {
                         TextField("Email", text: $email)
                             .textContentType(.emailAddress)
@@ -41,7 +40,6 @@ struct ForgotPasswordView: View {
                     .cornerRadius(10)
                 }
                 
-                // Reset password button
                 Button(action: {
                     Task {
                         await viewModel.resetPassword(email: email)

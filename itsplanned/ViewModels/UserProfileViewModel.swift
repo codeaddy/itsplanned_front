@@ -9,14 +9,12 @@ class UserProfileViewModel: ObservableObject {
     
     let baseURL = "http://localhost:8080"
     
-    // Function to update user display name
     func updateDisplayName(userId: Int, newName: String) async -> Bool {
         // Set loading state on main thread
         await MainActor.run {
             isLoading = true
         }
         
-        // Ensure we reset the loading state when we exit the function
         defer {
             Task { @MainActor in
                 isLoading = false
@@ -34,7 +32,6 @@ class UserProfileViewModel: ObservableObject {
                 return false
             }
             
-            // Create request body with the updated display name
             let requestBody: [String: Any] = ["display_name": newName]
             let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
             
@@ -54,7 +51,6 @@ class UserProfileViewModel: ObservableObject {
             if httpResponse.statusCode == 200 {
                 return true
             } else {
-                // Try to decode error response
                 if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
                     await setError(errorResponse.error ?? "Не удалось обновить профиль")
                 } else {
@@ -68,24 +64,20 @@ class UserProfileViewModel: ObservableObject {
         }
     }
     
-    // This is a placeholder for future implementation
     func updateProfilePicture(userId: Int, image: UIImage) async -> Bool {
-        // This functionality will be implemented in the future
+        // TODO
         await MainActor.run {
             isImageLoading = true
         }
         
-        // Ensure we reset the loading state when we exit the function
         defer {
             Task { @MainActor in
                 isImageLoading = false
             }
         }
         
-        // Simulate delay
         try? await Task.sleep(nanoseconds: 1_000_000_000)
         
-        // Return success for now since this is a stub
         return true
     }
     
