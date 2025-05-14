@@ -114,6 +114,11 @@ struct EventsView: View {
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+            .onDisappear {
+                Task {
+                    await viewModel.fetchEvents()
+                }
+            }
         }
         .task {
             await viewModel.fetchEvents()

@@ -9,8 +9,6 @@ final class EventViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var error: String?
     
-    private let baseURL = "http://localhost:8080"
-    
     func fetchEvents() async {
         isLoading = true
         defer { isLoading = false }
@@ -21,7 +19,7 @@ final class EventViewModel: ObservableObject {
                 return
             }
             
-            guard let url = URL(string: "\(baseURL)/events") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events") else {
                 error = "Некорректный URL"
                 return
             }
@@ -61,7 +59,7 @@ final class EventViewModel: ObservableObject {
                 return
             }
             
-            guard let url = URL(string: "\(baseURL)/events") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events") else {
                 error = "Некорректный URL"
                 return
             }

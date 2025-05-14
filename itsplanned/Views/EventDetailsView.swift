@@ -1,7 +1,6 @@
 import SwiftUI
 import Inject
 
-// Make EventResponse identifiable to work with .sheet(item:)
 extension EventResponse: Identifiable {}
 
 struct EventDetailsView: View {
@@ -109,7 +108,6 @@ struct EventDetailsView: View {
                             .frame(maxWidth: .infinity)
                         } else {
                             VStack(spacing: 16) {
-                                // Name field
                                 HStack {
                                     Text("Название")
                                         .foregroundColor(.gray)
@@ -223,22 +221,24 @@ struct EventDetailsView: View {
                                     .cornerRadius(10)
                                 }
                                 
-                                Button(action: {
-                                    viewModel.showingTimeslotsView = true
-                                }) {
-                                    Text("Подобрать время с Google Calendar")
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.blue)
-                                        .cornerRadius(10)
-                                }
-                                .sheet(isPresented: $viewModel.showingTimeslotsView) {
-                                    EventTimeslotsView(eventId: currentEvent.id, event: $currentEvent)
-                                        .onDisappear {
-                                            updateParentEvent()
-                                        }
+                                if viewModel.isOwner {
+                                    Button(action: {
+                                        viewModel.showingTimeslotsView = true
+                                    }) {
+                                        Text("Подобрать время с Google Calendar")
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color.blue)
+                                            .cornerRadius(10)
+                                    }
+                                    .sheet(isPresented: $viewModel.showingTimeslotsView) {
+                                        EventTimeslotsView(eventId: currentEvent.id, event: $currentEvent)
+                                            .onDisappear {
+                                                updateParentEvent()
+                                            }
+                                    }
                                 }
                                 
                                 HStack {
@@ -479,6 +479,21 @@ struct EventDetailsView: View {
                                     .padding(.horizontal)
                                 }
                             }
+
+                            HStack {
+                                Text("Уже потрачено: \(formatBudget(viewModel.spentBudget))₽")
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "banknote")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            .padding(.horizontal)
+                            .padding(.top, 5)
                             
                             VStack(spacing: 16) {
                                 NavigationLink(destination: TasksDestinationView(eventId: currentEvent.id, eventName: currentEvent.name)) {
@@ -501,34 +516,64 @@ struct EventDetailsView: View {
                             }
                             
                             VStack(spacing: 16) {
-                                HStack {
-                                    Text("Рейтинг участников")
-                                        .font(.headline)
-                                    
-                                    Spacer()
-                                    
-                                    NavigationLink(destination: EventLeaderboardView(eventId: currentEvent.id, eventName: currentEvent.name)) {
+                                NavigationLink(destination: EventLeaderboardView(eventId: currentEvent.id, eventName: currentEvent.name)) {
+                                    HStack {
+                                        Text("Рейтинг участников")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        Spacer()
+                                        
                                         Image(systemName: "chevron.right")
                                             .foregroundColor(.gray)
                                     }
+                                    .padding()
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(10)
                                 }
+                                .buttonStyle(PlainButtonStyle())
                                 .padding(.horizontal)
                             }
                             
-                            HStack {
-                                Text("Уже потрачено: \(formatBudget(viewModel.spentBudget))₽")
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                                
-                                Image(systemName: "banknote")
-                                    .foregroundColor(.gray)
+                            if viewModel.hasAccess && !viewModel.isOwner {
+                                Button(action: {
+                                    viewModel.showingLeaveConfirmation = true
+                                }) {
+                                    Text("Покинуть мероприятие")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.red)
+                                        .cornerRadius(10)
+                                }
+                                .padding(.horizontal)
+                                .padding(.bottom, 20)
                             }
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(10)
-                            .padding(.horizontal)
-                            .padding(.bottom, 16)
+                            
+                            if viewModel.isOwner {
+                                Divider()
+                                
+                                Button(action: {
+                                    viewModel.showingDeleteConfirmation = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                        
+                                        Text("Удалить мероприятие")
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.red)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(10)
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 20)
+                            }
                         }
                     }
                 }
@@ -584,6 +629,32 @@ struct EventDetailsView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
+        .confirmationDialog("Удаление мероприятия", isPresented: $viewModel.showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("Удалить", role: .destructive) {
+                Task {
+                    let success = await viewModel.deleteEvent(eventId: currentEvent.id)
+                    if success {
+                        dismiss()
+                    }
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Вы уверены, что хотите удалить мероприятие? Это действие нельзя отменить и приведет к удалению всех задач мероприятия.")
+        }
+        .confirmationDialog("Покинуть мероприятие", isPresented: $viewModel.showingLeaveConfirmation, titleVisibility: .visible) {
+            Button("Покинуть", role: .destructive) {
+                Task {
+                    let success = await viewModel.leaveEvent(eventId: currentEvent.id)
+                    if success {
+                        dismiss()
+                    }
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Вы уверены, что хотите покинуть мероприятие? Вы всегда сможете присоединиться снова по пригласительной ссылке.")
+        }
         .onReceive(Timer.publish(every: 10, on: .main, in: .common).autoconnect()) { _ in
             if isInitiallyLoading && loadingTask != nil {
                 print("Loading timeout - resetting loading state")
@@ -605,7 +676,7 @@ struct EventDetailsView: View {
             }
             print("Token obtained successfully")
             
-            guard let url = URL(string: "\(viewModel.baseURL)/events/\(currentEvent.id)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(currentEvent.id)") else {
                 print("Invalid URL!")
                 throw EventDetailError.invalidURL
             }
@@ -733,33 +804,21 @@ struct EventDetailsView: View {
                         
                         await withTaskGroup(of: Void.self) { group in
                             group.addTask {
-                                do {
-                                    print("[\(taskID)] Fetching participants...")
-                                    await viewModel.fetchParticipants(eventId: currentEvent.id)
-                                    print("[\(taskID)] Participants fetched")
-                                } catch {
-                                    print("[\(taskID)] Error fetching participants: \(error)")
-                                }
+                                print("[\(taskID)] Fetching participants...")
+                                await viewModel.fetchParticipants(eventId: currentEvent.id)
+                                print("[\(taskID)] Participants fetched")
                             }
                             
                             group.addTask {
-                                do {
-                                    print("[\(taskID)] Fetching budget info...")
-                                    await viewModel.fetchBudgetInfo(eventId: currentEvent.id)
-                                    print("[\(taskID)] Budget info fetched")
-                                } catch {
-                                    print("[\(taskID)] Error fetching budget info: \(error)")
-                                }
+                                print("[\(taskID)] Fetching budget info...")
+                                await viewModel.fetchBudgetInfo(eventId: currentEvent.id)
+                                print("[\(taskID)] Budget info fetched")
                             }
                             
                             group.addTask {
-                                do {
-                                    print("[\(taskID)] Fetching leaderboard...")
-                                    await viewModel.fetchLeaderboard(eventId: currentEvent.id)
-                                    print("[\(taskID)] Leaderboard fetched")
-                                } catch {
-                                    print("[\(taskID)] Error fetching leaderboard: \(error)")
-                                }
+                                print("[\(taskID)] Fetching leaderboard...")
+                                await viewModel.fetchLeaderboard(eventId: currentEvent.id)
+                                print("[\(taskID)] Leaderboard fetched")
                             }
                             
                             for await _ in group { }
@@ -777,7 +836,6 @@ struct EventDetailsView: View {
                 
                 if !Task.isCancelled {
                     print("[\(taskID)] Setting isInitiallyLoading to false")
-                    // Use DispatchQueue.main to ensure UI updates
                     DispatchQueue.main.async {
                         print("[\(taskID)] Actually updating isInitiallyLoading now")
                         withAnimation {
@@ -878,7 +936,6 @@ struct TasksDestinationView: View {
         print("Starting to load tasks for event ID: \(eventId)")
         
         defer {
-            // Use main thread to update UI state
             DispatchQueue.main.async {
                 isInitiallyLoading = false
             }
@@ -894,7 +951,6 @@ struct TasksDestinationView: View {
             print("Successfully loaded \(viewModel.tasks.count) tasks")
             errorMessage = nil
         } catch {
-            // Something went wrong
             print("Error fetching tasks: \(error)")
             
             if let taskError = error as? TaskError {

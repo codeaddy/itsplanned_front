@@ -21,8 +21,6 @@ final class ParticipantsViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var organizerName: String = ""
     
-    let baseURL = "http://localhost:8080"
-    
     func fetchParticipants(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -32,7 +30,7 @@ final class ParticipantsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let eventUrl = URL(string: "\(baseURL)/events/\(eventId)") else {
+            guard let eventUrl = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -56,7 +54,7 @@ final class ParticipantsViewModel: ObservableObject {
                 throw EventDetailError.apiError("Failed to parse event data")
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)/participants") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/participants") else {
                 throw EventDetailError.invalidURL
             }
             

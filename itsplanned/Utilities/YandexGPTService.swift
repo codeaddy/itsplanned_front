@@ -3,7 +3,6 @@ import OSLog
 
 private let logger = Logger(subsystem: "com.itsplanned", category: "YandexGPT")
 
-// System prompt for Yandex GPT
 private let SERVICE_SYSTEM_PROMPT = """
 You are an AI assistant for the itsPlanned application, which helps users plan events and organize parties.
 Be concise, helpful, and friendly in your responses.
@@ -15,8 +14,6 @@ Your responses should be warm, enthusiastic, and include emojis to convey emotio
 
 class YandexGPTService {
     static let shared = YandexGPTService()
-    
-    private let baseURL = "http://localhost:8080"
     
     private init() {}
     
@@ -30,8 +27,7 @@ class YandexGPTService {
         
         let jsonData = try JSONEncoder().encode(request)
         
-        // Set up URLRequest
-        guard let url = URL(string: "\(baseURL)/ai/message") else {
+        guard let url = URL(string: "\(APIConfig.baseURL)/ai/message") else {
             throw URLError(.badURL)
         }
         

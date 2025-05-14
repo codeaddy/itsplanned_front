@@ -3,7 +3,7 @@ import Inject
 
 struct MainTabView: View {
     @ObserveInjection var inject
-    @StateObject private var eventViewModel = EventViewModel()
+    @EnvironmentObject var eventViewModel: EventViewModel
     @ObservedObject var authViewModel: AuthViewModel
     
     var body: some View {
@@ -37,4 +37,5 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView(authViewModel: AuthViewModel())
+        .environmentObject(EventViewModel())
 } 

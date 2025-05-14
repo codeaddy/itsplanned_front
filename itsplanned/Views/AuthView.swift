@@ -16,8 +16,14 @@ struct AuthView: View {
                 .font(.title)
                 .fontWeight(.bold)
             
+            if let successMessage = viewModel.successMessage, !isRegistering {
+                Text(successMessage)
+                    .foregroundColor(.green)
+                    .padding(.horizontal)
+                    .multilineTextAlignment(.center)
+            }
+            
             VStack(spacing: 16) {
-                // Email field
                 HStack {
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress)
@@ -72,6 +78,7 @@ struct AuthView: View {
                     if isRegistering {
                         await viewModel.register(email: email, password: password, confirmPassword: confirmPassword)
                     } else {
+                        viewModel.successMessage = nil
                         await viewModel.login(email: email, password: password)
                     }
                 }
@@ -96,6 +103,7 @@ struct AuthView: View {
                     password = ""
                     confirmPassword = ""
                     viewModel.error = nil
+                    viewModel.successMessage = nil
                 }
             }) {
                 Text(isRegistering ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться")
@@ -117,11 +125,20 @@ struct AuthView: View {
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordView(email: email)
         }
-        .onChange(of: viewModel.isAuthenticated) { newValue in
-            if newValue {
-                email = ""
-                password = ""
-                confirmPassword = ""
+        .fullScreenCover(isPresented: Binding(
+            get: { viewModel.isAuthenticated },
+            set: { _ in }
+        )) {
+            MainTabView(authViewModel: viewModel)
+                .environmentObject(EventViewModel())
+        }
+        .onChange(of: viewModel.registrationCompleted) { completed in
+            if completed {
+                withAnimation {
+                    isRegistering = false
+                    password = ""
+                    confirmPassword = ""
+                }
             }
         }
         .enableInjection()

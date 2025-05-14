@@ -13,7 +13,6 @@ final class EventTasksViewModel: ObservableObject {
     @Published var isAddingTask = false
     @Published var isEventCreator = false
     
-    private let baseURL = "http://localhost:8080"
     private var currentUserId: Int?
     private var isPreviewMode = false
     
@@ -54,7 +53,7 @@ final class EventTasksViewModel: ObservableObject {
             throw TaskError.unauthorized
         }
         
-        guard var urlComponents = URLComponents(string: "\(baseURL)/tasks") else {
+        guard var urlComponents = URLComponents(string: "\(APIConfig.baseURL)/tasks") else {
             print("Invalid URL components")
             throw TaskError.invalidURL
         }
@@ -97,13 +96,13 @@ final class EventTasksViewModel: ObservableObject {
                     }
                     print("Success! Found \(eventTasks.count) tasks")
                     return
+                } else {
+                    DispatchQueue.main.async {
+                        self.tasks = []
+                    }
+                    print("Success! No tasks found for this event")
+                    return
                 }
-                
-                let tasks = try JSONDecoder().decode([TaskResponse].self, from: data)
-                DispatchQueue.main.async {
-                    self.tasks = tasks
-                }
-                print("Success! Directly decoded \(tasks.count) tasks")
                 
             } catch {
                 print("Error decoding response: \(error)")
@@ -128,7 +127,7 @@ final class EventTasksViewModel: ObservableObject {
                 throw TaskError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
                 throw TaskError.invalidURL
             }
             
@@ -181,7 +180,6 @@ final class EventTasksViewModel: ObservableObject {
             if let index = tasks.firstIndex(where: { $0.id == taskId }) {
                 let task = tasks[index]
                 
-                // Create an updated task
                 let updatedTask = TaskResponse(
                     id: task.id,
                     title: title,
@@ -205,7 +203,7 @@ final class EventTasksViewModel: ObservableObject {
                 throw TaskError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/tasks/\(taskId)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/tasks/\(taskId)") else {
                 throw TaskError.invalidURL
             }
             
@@ -331,7 +329,7 @@ final class EventTasksViewModel: ObservableObject {
                 throw TaskError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/tasks") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/tasks") else {
                 throw TaskError.invalidURL
             }
             
@@ -422,7 +420,7 @@ final class EventTasksViewModel: ObservableObject {
                 throw TaskError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/tasks/\(taskId)/assign") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/tasks/\(taskId)/assign") else {
                 throw TaskError.invalidURL
             }
             
@@ -500,7 +498,7 @@ final class EventTasksViewModel: ObservableObject {
                 throw TaskError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/tasks/\(taskId)/complete") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/tasks/\(taskId)/complete") else {
                 throw TaskError.invalidURL
             }
             
@@ -554,6 +552,60 @@ final class EventTasksViewModel: ObservableObject {
     func cancelAddingTask() {
         isAddingTask = false
         newTaskTitle = ""
+    }
+    
+    func deleteTask(taskId: Int) async -> Bool {
+        if isPreviewMode {
+            tasks.removeAll { $0.id == taskId }
+            return true
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            guard let token = await KeychainManager.shared.getToken() else {
+                throw TaskError.unauthorized
+            }
+            
+            guard let url = URL(string: "\(APIConfig.baseURL)/tasks/\(taskId)") else {
+                throw TaskError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw TaskError.invalidResponse
+            }
+            
+            print("Delete task response status: \(httpResponse.statusCode)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Delete task response: \(jsonString)")
+            }
+            
+            if httpResponse.statusCode == 200 {
+                if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+                    tasks.remove(at: index)
+                }
+                return true
+            } else {
+                if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
+                    throw TaskError.apiError(errorResponse.error ?? "Failed to delete task")
+                } else {
+                    throw TaskError.apiError("Failed to delete task: HTTP \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            self.error = error.localizedDescription
+            self.showError = true
+            logger.error("Error deleting task: \(error.localizedDescription)")
+        }
+        
+        return false
     }
 }
 

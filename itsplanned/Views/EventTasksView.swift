@@ -7,7 +7,6 @@ struct EventTasksView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
     @State private var selectedTask: TaskResponse? = nil
-    @State private var showTaskDetail = false
     let eventId: Int
     let eventName: String
     
@@ -93,7 +92,6 @@ struct EventTasksView: View {
                             )
                             .onTapGesture {
                                 selectedTask = task
-                                showTaskDetail = true
                             }
                         }
                     }
@@ -133,49 +131,39 @@ struct EventTasksView: View {
                 }
             )
         }
-        .sheet(isPresented: $showTaskDetail, onDismiss: {
-            Task {
-                do {
-                    try await viewModel.fetchTasks(eventId: eventId)
-                } catch {
-                    print("Error refreshing tasks after detail view: \(error)")
-                    DispatchQueue.main.async {
-                        viewModel.error = error.localizedDescription
-                        viewModel.showError = true
+        .sheet(item: $selectedTask) { task in
+            TaskDetailView(
+                task: task,
+                isCurrentUserAssigned: viewModel.isCurrentUserAssigned(to: task),
+                isEventCreator: viewModel.isEventCreator,
+                onToggleAssignment: {
+                    Task {
+                        await viewModel.toggleTaskAssignment(taskId: task.id)
+                    }
+                },
+                onToggleCompletion: {
+                    Task {
+                        await viewModel.toggleTaskCompletion(taskId: task.id)
+                    }
+                },
+                onUpdateTask: { title, description, budget, points in
+                    return await viewModel.updateTask(
+                        taskId: task.id,
+                        title: title,
+                        description: description,
+                        budget: budget,
+                        points: points
+                    )
+                },
+                onDeleteTask: {
+                    Task {
+                        let success = await viewModel.deleteTask(taskId: task.id)
+                        if success {
+                            selectedTask = nil
+                        }
                     }
                 }
-            }
-        }) {
-            if let task = selectedTask {
-                NavigationView {
-                    ZStack {
-                        TaskDetailView(
-                            task: task,
-                            isCurrentUserAssigned: viewModel.isCurrentUserAssigned(to: task),
-                            isEventCreator: viewModel.isEventCreator,
-                            onToggleAssignment: {
-                                Task {
-                                    await viewModel.toggleTaskAssignment(taskId: task.id)
-                                    selectedTask = viewModel.tasks.first(where: { $0.id == task.id })
-                                }
-                            },
-                            onToggleCompletion: {
-                                Task {
-                                    await viewModel.toggleTaskCompletion(taskId: task.id)
-                                    selectedTask = viewModel.tasks.first(where: { $0.id == task.id })
-                                }
-                            },
-                            onUpdateTask: { title, description, budget, points in
-                                let result = await viewModel.updateTask(taskId: task.id, title: title, description: description, budget: budget, points: points)
-                                if result {
-                                    selectedTask = viewModel.tasks.first(where: { $0.id == task.id })
-                                }
-                                return result
-                            }
-                        )
-                    }
-                }
-            }
+            )
         }
         .alert(isPresented: $viewModel.showError) {
             Alert(

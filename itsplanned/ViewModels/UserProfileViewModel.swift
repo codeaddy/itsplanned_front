@@ -7,10 +7,7 @@ class UserProfileViewModel: ObservableObject {
     @Published var showError = false
     @Published var isImageLoading = false
     
-    let baseURL = "http://localhost:8080"
-    
     func updateDisplayName(userId: Int, newName: String) async -> Bool {
-        // Set loading state on main thread
         await MainActor.run {
             isLoading = true
         }
@@ -27,7 +24,7 @@ class UserProfileViewModel: ObservableObject {
                 return false
             }
             
-            guard let url = URL(string: "\(baseURL)/profile") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/profile") else {
                 await setError("Некорректный URL")
                 return false
             }
@@ -65,7 +62,6 @@ class UserProfileViewModel: ObservableObject {
     }
     
     func updateProfilePicture(userId: Int, image: UIImage) async -> Bool {
-        // TODO
         await MainActor.run {
             isImageLoading = true
         }

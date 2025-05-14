@@ -1,6 +1,6 @@
 import Foundation
 
-struct TaskResponse: Codable {
+struct TaskResponse: Codable, Identifiable {
     let id: Int
     let title: String
     let description: String?

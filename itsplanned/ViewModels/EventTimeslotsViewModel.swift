@@ -36,8 +36,6 @@ class EventTimeslotsViewModel: ObservableObject {
     @Published var endTime = Calendar.current.date(bySettingHour: 22, minute: 0, second: 0, of: Date()) ?? Date()
     @Published var durationMins: Int = 120 // Default duration of 2 hours
     
-    private let baseURL = "http://localhost:8080"
-    
     func fetchTimeslots(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -56,7 +54,7 @@ class EventTimeslotsViewModel: ObservableObject {
             let startTimeString = timeFormatter.string(from: startTime)
             let endTimeString = timeFormatter.string(from: endTime)
             
-            guard let url = URL(string: "\(baseURL)/events/find_best_time_for_day") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/find_best_time_for_day") else {
                 throw TimeslotError.invalidURL
             }
             
@@ -129,7 +127,7 @@ class EventTimeslotsViewModel: ObservableObject {
                 throw TimeslotError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
                 throw TimeslotError.invalidURL
             }
             

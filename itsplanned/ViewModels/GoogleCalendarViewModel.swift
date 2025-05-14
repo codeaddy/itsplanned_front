@@ -11,7 +11,6 @@ final class GoogleCalendarViewModel: ObservableObject {
     @Published var error: String?
     @Published var showError = false
     
-    let baseURL = "http://localhost:8080"
     let redirectURI = "itsplanned://callback/auth"
     
     func getGoogleAuthURL() async -> URL? {
@@ -24,7 +23,7 @@ final class GoogleCalendarViewModel: ObservableObject {
                 return nil
             }
             
-            guard let url = URL(string: "\(baseURL)/auth/google") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/auth/google") else {
                 setError("Некорректный URL")
                 return nil
             }
@@ -90,7 +89,7 @@ final class GoogleCalendarViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            guard var urlComponents = URLComponents(string: "\(baseURL)/auth/google/callback") else {
+            guard var urlComponents = URLComponents(string: "\(APIConfig.baseURL)/auth/google/callback") else {
                 setError("Некорректный URL для callback")
                 return false
             }
@@ -160,7 +159,7 @@ final class GoogleCalendarViewModel: ObservableObject {
                 return false
             }
             
-            guard let url = URL(string: "\(baseURL)/auth/oauth/save") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/auth/oauth/save") else {
                 setError("Некорректный URL для сохранения токенов")
                 return false
             }
@@ -227,7 +226,7 @@ final class GoogleCalendarViewModel: ObservableObject {
                 return false
             }
             
-            guard let url = URL(string: "\(baseURL)/calendar/import") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/calendar/import") else {
                 setError("Некорректный URL для импорта событий")
                 return false
             }
@@ -298,7 +297,7 @@ final class GoogleCalendarViewModel: ObservableObject {
                 return
             }
             
-            guard var urlComponents = URLComponents(string: "\(baseURL)/calendar/import") else {
+            guard var urlComponents = URLComponents(string: "\(APIConfig.baseURL)/calendar/import") else {
                 isConnected = false
                 return
             }

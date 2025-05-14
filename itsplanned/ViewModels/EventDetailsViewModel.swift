@@ -37,22 +37,20 @@ final class EventDetailsViewModel: ObservableObject {
     @Published var isOwner: Bool = false
     @Published var showShareLinkCopied: Bool = false
     @Published var showingTimeslotsView: Bool = false
+    @Published var showingDeleteConfirmation: Bool = false
+    @Published var showingLeaveConfirmation: Bool = false
     
-    // Edit mode properties
     @Published var isEditingName: Bool = false
     @Published var isEditingDescription: Bool = false
     @Published var isEditingDateTime: Bool = false
     @Published var isEditingPlace: Bool = false
     @Published var isEditingBudget: Bool = false
     
-    // Edited values
     @Published var editedName: String = ""
     @Published var editedDescription: String = ""
     @Published var editedDateTime: Date = Date()
     @Published var editedPlace: String = ""
     @Published var editedBudget: String = ""
-    
-    let baseURL = "http://localhost:8080"
     
     func fetchParticipants(eventId: Int) async {
         isLoading = true
@@ -63,7 +61,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)/participants") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/participants") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -113,7 +111,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)/budget") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/budget") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -133,11 +131,9 @@ final class EventDetailsViewModel: ObservableObject {
             }
             
             if httpResponse.statusCode == 200 {
-                let budgetResponse = try JSONDecoder().decode(APIResponse<EventBudgetResponse>.self, from: data)
-                if let budget = budgetResponse.data {
-                    self.initialBudget = budget.initialBudget
-                    self.spentBudget = budget.realBudget
-                }
+                let budgetResponse = try JSONDecoder().decode(EventBudgetResponse.self, from: data)
+                self.initialBudget = budgetResponse.initialBudget
+                self.spentBudget = budgetResponse.realBudget
             } else if httpResponse.statusCode == 403 || httpResponse.statusCode == 401 {
                 let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data)
                 let errorMessage = errorResponse?.error ?? "You are not authorized to view this event's budget"
@@ -166,7 +162,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)/leaderboard") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/leaderboard") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -218,7 +214,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/invite") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/invite") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -287,7 +283,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -329,7 +325,6 @@ final class EventDetailsViewModel: ObservableObject {
         }
     }
     
-    // Check if the user is a participant of the event
     func checkEventAccess(eventId: Int) async -> Bool {
         isLoading = true
         defer { isLoading = false }
@@ -339,7 +334,7 @@ final class EventDetailsViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -412,7 +407,6 @@ final class EventDetailsViewModel: ObservableObject {
                 self.showShareLinkCopied = true
                 print("Set showShareLinkCopied to true")
                 
-                // Hide notification after 2 seconds
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     self.showShareLinkCopied = false
                     print("Set showShareLinkCopied to false")
@@ -496,5 +490,105 @@ final class EventDetailsViewModel: ObservableObject {
         } else if let string = String(data: data, encoding: .utf8) {
             print("\(label) (raw):\n\(string)")
         }
+    }
+    
+    func deleteEvent(eventId: Int) async -> Bool {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            guard let token = await KeychainManager.shared.getToken() else {
+                throw EventDetailError.unauthorized
+            }
+            
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)") else {
+                throw EventDetailError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw EventDetailError.invalidResponse
+            }
+            
+            print("Delete event response status: \(httpResponse.statusCode)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Delete event response: \(jsonString)")
+            }
+            
+            if httpResponse.statusCode == 200 {
+                return true
+            } else {
+                if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
+                    throw EventDetailError.apiError(errorResponse.error ?? "Failed to delete event")
+                } else {
+                    throw EventDetailError.apiError("Failed to delete event: HTTP \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            showError = true
+            if let eventError = error as? EventDetailError {
+                errorMessage = eventError.message
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            logger.error("Error deleting event: \(error.localizedDescription)")
+        }
+        
+        return false
+    }
+    
+    func leaveEvent(eventId: Int) async -> Bool {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            guard let token = await KeychainManager.shared.getToken() else {
+                throw EventDetailError.unauthorized
+            }
+            
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/leave") else {
+                throw EventDetailError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw EventDetailError.invalidResponse
+            }
+            
+            print("Leave event response status: \(httpResponse.statusCode)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Leave event response: \(jsonString)")
+            }
+            
+            if httpResponse.statusCode == 200 {
+                return true
+            } else {
+                if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
+                    throw EventDetailError.apiError(errorResponse.error ?? "Failed to leave event")
+                } else {
+                    throw EventDetailError.apiError("Failed to leave event: HTTP \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            showError = true
+            if let eventError = error as? EventDetailError {
+                errorMessage = eventError.message
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            logger.error("Error leaving event: \(error.localizedDescription)")
+        }
+        
+        return false
     }
 } 

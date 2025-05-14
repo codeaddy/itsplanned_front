@@ -15,7 +15,6 @@ final class EventCreationViewModel: ObservableObject {
     @Published var errorMessage = ""
     @Published private(set) var isLoading = false
     
-    private let baseURL = "http://localhost:8080"
     private let dateFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
@@ -57,7 +56,7 @@ final class EventCreationViewModel: ObservableObject {
             
             let jsonData = try JSONEncoder().encode(eventRequest)
             
-            guard let url = URL(string: "\(baseURL)/events") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events") else {
                 throw EventError.invalidURL
             }
             

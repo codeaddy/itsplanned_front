@@ -172,7 +172,6 @@ struct ParticipantsView: View {
         }
         .task {
             if viewModel.participants.isEmpty {
-                // Fetch participants from the API
                 await viewModel.fetchParticipants(eventId: eventId)
             }
             
@@ -283,7 +282,6 @@ struct ParticipantsDestinationView: View {
                 return
             }
             
-            // Using a small delay to avoid flashing the loading screen for fast loads
             try? await Task.sleep(for: .milliseconds(300))
             isInitiallyLoading = false
         }

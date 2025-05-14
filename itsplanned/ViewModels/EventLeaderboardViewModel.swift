@@ -28,8 +28,6 @@ class EventLeaderboardViewModel: ObservableObject {
     @Published var currentUserPosition: Int = 0
     @Published var currentUserEntry: LeaderboardUser?
     
-    private let baseURL = "http://localhost:8080"
-    
     func fetchLeaderboard(eventId: Int) async {
         isLoading = true
         defer { isLoading = false }
@@ -39,7 +37,7 @@ class EventLeaderboardViewModel: ObservableObject {
                 throw EventDetailError.unauthorized
             }
             
-            guard let url = URL(string: "\(baseURL)/events/\(eventId)/leaderboard") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/events/\(eventId)/leaderboard") else {
                 throw EventDetailError.invalidURL
             }
             
@@ -93,15 +91,17 @@ class EventLeaderboardViewModel: ObservableObject {
                                     for (index, entry) in leaderboardArray.enumerated() {
                                         if let userId = entry["user_id"] as? Int,
                                            let score = entry["score"] as? Double,
-                                           let eventId = entry["event_id"] as? Int {
+                                           let eventId = entry["event_id"] as? Int,
+                                           let displayName = entry["display_name"] as? String {
                                             
                                             let leaderboardEntry = EventLeaderboardEntry(
                                                 userId: userId,
                                                 score: score,
-                                                eventId: eventId
+                                                eventId: eventId,
+                                                displayName: displayName
                                             )
                                             leaderboardEntries.append(leaderboardEntry)
-                                            print("Manually added entry \(index): userId=\(userId), score=\(score)")
+                                            print("Manually added entry \(index): userId=\(userId), score=\(score), displayName=\(displayName)")
                                         }
                                     }
                                 } else {
@@ -162,44 +162,23 @@ class EventLeaderboardViewModel: ObservableObject {
         
         for (index, entry) in sortedEntries.enumerated() {
             let position = index + 1
-            print("Processing entry \(index): userId=\(entry.userId), score=\(entry.score), position=\(position)")
+            print("Processing entry \(index): userId=\(entry.userId), score=\(entry.score), displayName=\(entry.displayName), position=\(position)")
             
-            if let userDetails = await fetchUserDetails(for: entry.userId) {
-                print("User details found for user \(entry.userId): \(userDetails.displayName)")
-                let leaderboardUser = LeaderboardUser(
-                    id: index,
-                    userId: entry.userId,
-                    displayName: userDetails.displayName,
-                    score: entry.score,
-                    position: position,
-                    avatar: userDetails.avatar
-                )
-                
-                processedUsers.append(leaderboardUser)
-                
-                if entry.userId == currentUserId {
-                    print("Current user found at position \(position)")
-                    currentUserPosition = position
-                    currentUserEntry = leaderboardUser
-                }
-            } else {
-                print("No user details found for user \(entry.userId), using placeholder")
-                let leaderboardUser = LeaderboardUser(
-                    id: index,
-                    userId: entry.userId,
-                    displayName: "Пользователь #\(entry.userId)",
-                    score: entry.score,
-                    position: position,
-                    avatar: nil
-                )
-                
-                processedUsers.append(leaderboardUser)
-                
-                if entry.userId == currentUserId {
-                    print("Current user found at position \(position) (using placeholder)")
-                    currentUserPosition = position
-                    currentUserEntry = leaderboardUser
-                }
+            let leaderboardUser = LeaderboardUser(
+                id: index,
+                userId: entry.userId,
+                displayName: entry.displayName,
+                score: entry.score,
+                position: position,
+                avatar: nil
+            )
+            
+            processedUsers.append(leaderboardUser)
+            
+            if entry.userId == currentUserId {
+                print("Current user found at position \(position)")
+                currentUserPosition = position
+                currentUserEntry = leaderboardUser
             }
         }
         
@@ -207,58 +186,6 @@ class EventLeaderboardViewModel: ObservableObject {
         await MainActor.run {
             self.leaderboardUsers = processedUsers
             print("Updated leaderboardUsers on UI: \(self.leaderboardUsers.count) items")
-        }
-    }
-    
-    // Fetch user details for a given user ID
-    private func fetchUserDetails(for userId: Int) async -> UserResponse? {
-        do {
-            guard let token = await KeychainManager.shared.getToken() else {
-                return nil
-            }
-            
-            guard let url = URL(string: "\(baseURL)/users/\(userId)") else {
-                return nil
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                return nil
-            }
-            
-            print("User API Response Status for ID \(userId): \(httpResponse.statusCode)")
-            
-            if httpResponse.statusCode == 200 {
-                do {
-                    let userResponse = try JSONDecoder().decode(UserResponse.self, from: data)
-                    print("Successfully decoded user data for ID \(userId): \(userResponse.displayName)")
-                    return userResponse
-                } catch {
-                    print("Failed to decode user data: \(error)")
-                    if let jsonString = String(data: data, encoding: .utf8) {
-                        print("User JSON: \(jsonString)")
-                    }
-                }
-            }
-            
-            print("Using default display name for user ID \(userId)")
-            return UserResponse(
-                id: userId,
-                email: "user\(userId)@example.com",
-                displayName: "Пользователь #\(userId)",
-                bio: nil,
-                avatar: nil,
-                createdAt: "2023-01-01T00:00:00Z",
-                updatedAt: "2023-01-01T00:00:00Z"
-            )
-        } catch {
-            print("Error fetching user details for ID \(userId): \(error.localizedDescription)")
-            return nil
         }
     }
 } 

@@ -10,7 +10,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     private override init() {
         super.init()
-        // Set this class as the notification delegate
         UNUserNotificationCenter.current().delegate = self
     }
     
@@ -21,7 +20,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             } else if granted {
                 self.logger.info("Notification permission granted")
                 
-                // Register for remote notifications on the main thread
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
@@ -29,7 +27,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 self.logger.warning("Notification permission denied")
             }
             
-            // Return result on the main thread
             DispatchQueue.main.async {
                 completion(granted)
             }
@@ -46,7 +43,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
         
-        // Create a unique identifier for this notification or use the provided one
         let requestIdentifier = identifier ?? UUID().uuidString
         
         let request = UNNotificationRequest(
@@ -61,7 +57,6 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             } else {
                 self.logger.info("Notification scheduled successfully with ID: \(requestIdentifier)")
                 
-                // For debugging in simulator, print pending notifications
                 UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
                     self.logger.info("Current pending notifications: \(requests.count)")
                     for request in requests {
@@ -99,30 +94,24 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     
-    // Handle notifications when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, 
                                willPresent notification: UNNotification, 
                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
     
-    // Handle notification response when user taps on notification
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         
-        // Check if this is a task status notification and extract the task ID
         if let taskId = userInfo["taskId"] as? Int {
             logger.info("User tapped on task status notification for task ID: \(taskId)")
-            // For now, we'll just log it
         }
         
         completionHandler()
     }
     
-    // Check notification authorization status
     func checkAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {

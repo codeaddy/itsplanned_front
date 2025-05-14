@@ -84,10 +84,12 @@ struct EventLeaderboardEntry: Codable {
     let userId: Int
     let score: Double
     let eventId: Int
+    let displayName: String
     
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case score
         case eventId = "event_id"
+        case displayName = "display_name"
     }
 } 

@@ -37,7 +37,6 @@ struct EventLeaderboardView: View {
             Color(.systemBackground)
                 .ignoresSafeArea()
             
-            // Loading state
             if isInitiallyLoading {
                 VStack {
                     ProgressView()
@@ -51,7 +50,6 @@ struct EventLeaderboardView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Header with back button
                         HStack {
                             Button(action: { dismiss() }) {
                                 Image(systemName: "arrow.left")
@@ -67,7 +65,6 @@ struct EventLeaderboardView: View {
                             
                             Spacer()
                             
-                            // Invisible element to balance the header
                             Image(systemName: "arrow.left")
                                 .foregroundColor(.clear)
                                 .font(.system(size: 20))
@@ -77,7 +74,6 @@ struct EventLeaderboardView: View {
                         .padding(.bottom, 30)
                         
                         if viewModel.leaderboardUsers.isEmpty {
-                            // Show empty state
                             VStack(spacing: 16) {
                                 Image(systemName: "chart.bar")
                                     .font(.system(size: 60))
@@ -126,7 +122,6 @@ struct EventLeaderboardView: View {
     
     private var topThreePodium: some View {
         HStack(alignment: .bottom, spacing: 0) {
-            // Second place
             if viewModel.leaderboardUsers.count >= 2 {
                 let user = viewModel.leaderboardUsers[1]
                 participantPodiumView(
@@ -135,24 +130,24 @@ struct EventLeaderboardView: View {
                     score: Int(user.score),
                     avatar: user.avatar
                 )
+                .frame(maxWidth: .infinity)
             } else {
                 Spacer()
-                    .frame(width: 80)
+                    .frame(maxWidth: .infinity)
             }
             
             if !viewModel.leaderboardUsers.isEmpty {
                 let user = viewModel.leaderboardUsers[0]
                 VStack(spacing: 0) {
-                    // Crown image
                     Image(systemName: "crown.fill")
-                        .font(.system(size: 30))
+                        .font(.system(size: 28))
                         .foregroundColor(Color.yellow)
-                        .padding(.bottom, 2)
+                        .padding(.bottom, 4)
                     
                     ZStack {
                         Circle()
                             .fill(Color(.systemGray5))
-                            .frame(width: 80, height: 80)
+                            .frame(width: 90, height: 90)
                             .overlay(
                                 Circle()
                                     .stroke(Color.yellow, lineWidth: 3)
@@ -165,14 +160,14 @@ struct EventLeaderboardView: View {
                                     .aspectRatio(contentMode: .fill)
                             } placeholder: {
                                 Image(systemName: "person.fill")
-                                    .font(.system(size: 40))
+                                    .font(.system(size: 45))
                                     .foregroundColor(.gray)
                             }
-                            .frame(width: 70, height: 70)
+                            .frame(width: 80, height: 80)
                             .clipShape(Circle())
                         } else {
                             Image(systemName: "person.fill")
-                                .font(.system(size: 40))
+                                .font(.system(size: 45))
                                 .foregroundColor(.gray)
                         }
                         
@@ -185,21 +180,24 @@ struct EventLeaderboardView: View {
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
                         }
-                        .offset(x: 0, y: 35)
+                        .offset(x: 0, y: 40)
                     }
                     
                     Text(user.displayName)
                         .font(.headline)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .padding(.top, 16)
                     
                     Text("\(max(0, Int(user.score))) \(scoreEndingRussian(score: Int(user.score)))")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
-                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 10)
             } else {
                 Spacer()
-                    .frame(width: 100)
+                    .frame(maxWidth: .infinity)
             }
             
             if viewModel.leaderboardUsers.count >= 3 {
@@ -210,9 +208,10 @@ struct EventLeaderboardView: View {
                     score: Int(user.score),
                     avatar: user.avatar
                 )
+                .frame(maxWidth: .infinity)
             } else {
                 Spacer()
-                    .frame(width: 80)
+                    .frame(maxWidth: .infinity)
             }
         }
         .padding(.horizontal)
@@ -256,19 +255,21 @@ struct EventLeaderboardView: View {
             }
             
             Text(name)
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.medium)
                 .foregroundColor(.primary)
-                .padding(.top, 20)
+                .padding(.top, 16)
+                .lineLimit(1)
             
             Text("\(max(0, score)) \(scoreEndingRussian(score: score))")
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundColor(.gray)
         }
     }
     
     private var leaderboardList: some View {
         VStack(spacing: 0) {
-            ForEach(viewModel.leaderboardUsers.prefix(3)) { user in
+            ForEach(Array(viewModel.leaderboardUsers.prefix(3).enumerated()), id: \.element.id) { index, user in
                 leaderboardRow(user: user, highlight: user.position <= 3)
             }
             
@@ -332,6 +333,7 @@ struct EventLeaderboardView: View {
             Text(user.displayName)
                 .font(.headline)
                 .foregroundColor(.primary)
+                .lineLimit(1)
             
             Spacer()
             

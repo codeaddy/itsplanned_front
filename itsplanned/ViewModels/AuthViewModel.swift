@@ -36,10 +36,11 @@ final class AuthViewModel: ObservableObject {
     @Published var error: AuthError?
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var currentUser: UserResponse?
+    @Published var registrationCompleted = false
+    @Published var successMessage: String? = nil
     
     private(set) var email: String = ""
     private(set) var password: String = ""
-    private let baseURL = "http://localhost:8080"
     
     init() {
         Task {
@@ -53,10 +54,8 @@ final class AuthViewModel: ObservableObject {
     private func setAuthenticationState(_ authenticated: Bool) async {
         isAuthenticated = authenticated
         if authenticated {
-            // Start the background task when authenticated
             TaskStatusEventService.shared.startBackgroundFetching()
         } else {
-            // Stop the background task when logged out
             TaskStatusEventService.shared.stopBackgroundFetching()
             currentUser = nil
             email = ""
@@ -81,7 +80,7 @@ final class AuthViewModel: ObservableObject {
         }
         
         do {
-            guard let url = URL(string: "\(baseURL)/profile") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/profile") else {
                 throw AuthError.unknown
             }
             
@@ -131,6 +130,7 @@ final class AuthViewModel: ObservableObject {
             return
         }
         
+        registrationCompleted = false
         isLoading = true
         defer { isLoading = false }
         
@@ -138,7 +138,7 @@ final class AuthViewModel: ObservableObject {
             let registerRequest = RegisterRequest(email: email, password: password)
             let jsonData = try JSONEncoder().encode(registerRequest)
             
-            guard let url = URL(string: "\(baseURL)/register") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/register") else {
                 throw AuthError.unknown
             }
             
@@ -167,13 +167,14 @@ final class AuthViewModel: ObservableObject {
 
     func login(email: String, password: String) async {
         isLoading = true
+        successMessage = nil
         defer { isLoading = false }
         
         do {
             let loginRequest = LoginRequest(email: email, password: password)
             let jsonData = try JSONEncoder().encode(loginRequest)
             
-            guard let url = URL(string: "\(baseURL)/login") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/login") else {
                 throw AuthError.unknown
             }
             
@@ -213,7 +214,7 @@ final class AuthViewModel: ObservableObject {
             let resetRequest = ResetPasswordRequest(email: email)
             let jsonData = try JSONEncoder().encode(resetRequest)
             
-            guard let url = URL(string: "\(baseURL)/password/reset-request") else {
+            guard let url = URL(string: "\(APIConfig.baseURL)/password/reset-request") else {
                 throw AuthError.unknown
             }
             
@@ -245,21 +246,38 @@ final class AuthViewModel: ObservableObject {
     }
 
     func logout() {
-        Task {
+        Task { @MainActor in
             await setAuthenticationState(false)
         }
     }
 
     private func handleRegistrationResponse(httpResponse: HTTPURLResponse, data: Data, email: String) async throws {
         if httpResponse.statusCode == 200 {
-            let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
-            await KeychainManager.shared.saveToken(loginResponse.token)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
             
-            UserDefaults.standard.email = email
-            self.email = email
-            await setAuthenticationState(true)
+            struct RegistrationResponse: Codable {
+                let message: String
+                let user: UserResponse
+            }
             
-            await fetchUserProfile()
+            do {
+                let response = try decoder.decode(RegistrationResponse.self, from: data)
+                
+                UserDefaults.standard.email = email
+                self.email = email
+                self.error = nil
+                
+                isAuthenticated = false
+                registrationCompleted = true
+                successMessage = "Регистрация выполнена успешно. Теперь вы можете войти."
+            } catch {
+                if let errorResponse = try? decoder.decode(APIResponse<String>.self, from: data) {
+                    throw AuthError.networkError(errorResponse.error ?? "Registration failed")
+                } else {
+                    throw AuthError.networkError("Registration data could not be decoded: \(error.localizedDescription)")
+                }
+            }
         } else {
             if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
                 throw AuthError.networkError(errorResponse.error ?? "Registration failed")
@@ -314,12 +332,60 @@ final class AuthViewModel: ObservableObject {
         return password.count >= 8
     }
 
-    // Public method to refresh user profile data
+    func submitNewPassword(token: String, password: String) async {
+        guard isValidPassword(password) else {
+            error = .invalidPassword
+            return
+        }
+        
+        isLoading = true
+        
+        do {
+            let resetRequest = SubmitNewPasswordRequest(token: token, newPassword: password)
+            let jsonData = try JSONEncoder().encode(resetRequest)
+            
+            guard let url = URL(string: "\(APIConfig.baseURL)/password/reset") else {
+                throw AuthError.unknown
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = jsonData
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            logResponse(data, for: "/password/reset")
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AuthError.unknown
+            }
+            
+            if httpResponse.statusCode == 200 {
+                isPasswordResetSuccessful = true
+                
+                if let savedEmail = UserDefaults.standard.email {
+                    logger.info("Attempting auto-login after password reset with email: \(savedEmail)")
+                    await login(email: savedEmail, password: password)
+                }
+            } else {
+                let errorResponse = try JSONDecoder().decode(APIResponse<String>.self, from: data)
+                throw AuthError.networkError(errorResponse.error ?? "Failed to reset password")
+            }
+        } catch {
+            if let authError = error as? AuthError {
+                self.error = authError
+            } else {
+                self.error = .networkError(error.localizedDescription)
+            }
+        }
+        
+        isLoading = false
+    }
+
     func refreshUserProfile() async {
         await fetchUserProfile()
     }
     
-    // Method to set current user for previews
     #if DEBUG
     func setCurrentUserForPreview(_ user: UserResponse) {
         self.currentUser = user

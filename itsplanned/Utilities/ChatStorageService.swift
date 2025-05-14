@@ -40,7 +40,6 @@ class ChatStorageService {
     func saveChatThread(_ chatThread: ChatThread) {
         var chatThreads = loadChatThreads()
         
-        // Update or add the thread
         if let index = chatThreads.firstIndex(where: { $0.id == chatThread.id }) {
             chatThreads[index] = chatThread
         } else {

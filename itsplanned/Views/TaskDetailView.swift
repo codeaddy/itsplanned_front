@@ -11,6 +11,7 @@ struct TaskDetailView: View {
     let onToggleAssignment: () -> Void
     let onToggleCompletion: () -> Void
     let onUpdateTask: (String, String?, Double?, Int?) async -> Bool
+    let onDeleteTask: () -> Void
     
     @State private var isEditingTitle = false
     @State private var isEditingDescription = false
@@ -24,6 +25,7 @@ struct TaskDetailView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = "Не удалось обновить задачу. Попробуйте еще раз."
     @State private var isLoading = false
+    @State private var showingDeleteConfirmation = false
     
     init(
         task: TaskResponse,
@@ -31,7 +33,8 @@ struct TaskDetailView: View {
         isEventCreator: Bool,
         onToggleAssignment: @escaping () -> Void,
         onToggleCompletion: @escaping () -> Void,
-        onUpdateTask: @escaping (String, String?, Double?, Int?) async -> Bool
+        onUpdateTask: @escaping (String, String?, Double?, Int?) async -> Bool,
+        onDeleteTask: @escaping () -> Void
     ) {
         self.task = task
         self.isCurrentUserAssigned = isCurrentUserAssigned
@@ -39,6 +42,7 @@ struct TaskDetailView: View {
         self.onToggleAssignment = onToggleAssignment
         self.onToggleCompletion = onToggleCompletion
         self.onUpdateTask = onUpdateTask
+        self.onDeleteTask = onDeleteTask
         
         _editedTitle = State(initialValue: task.title)
         _editedDescription = State(initialValue: task.description ?? "")
@@ -333,6 +337,29 @@ struct TaskDetailView: View {
                     }
                     .padding(.vertical, 10)
                     
+                    if isEventCreator {
+                        Divider()
+                        
+                        Button(action: {
+                            showingDeleteConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                                
+                                Text("Удалить задачу")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.red)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                        }
+                        .padding(.vertical, 10)
+                    }
+                    
                     Spacer()
                 }
                 .padding()
@@ -371,6 +398,14 @@ struct TaskDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+        .confirmationDialog("Удаление задачи", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("Удалить", role: .destructive) {
+                onDeleteTask()
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Вы уверены, что хотите удалить задачу? Это действие нельзя отменить.")
         }
         .enableInjection()
     }
@@ -462,7 +497,8 @@ struct TaskDetailView: View {
             isEventCreator: true,
             onToggleAssignment: {},
             onToggleCompletion: {},
-            onUpdateTask: { _, _, _, _ in return true }
+            onUpdateTask: { _, _, _, _ in return true },
+            onDeleteTask: {}
         )
     }
 } 

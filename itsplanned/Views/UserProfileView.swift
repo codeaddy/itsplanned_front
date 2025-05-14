@@ -18,7 +18,6 @@ struct UserProfileView: View {
     @State private var googleAuthURL: URL?
     @State private var showingSuccessMessage = false
     @State private var successMessage = ""
-    // Track active tasks to avoid memory leaks
     @State private var activeTask: Task<Void, Never>?
     
     var body: some View {
@@ -61,7 +60,6 @@ struct UserProfileView: View {
                         }
                     }
                     .onTapGesture {
-                        // In future this will open the image picker
                         showingImagePicker = true
                     }
                     
@@ -148,10 +146,8 @@ struct UserProfileView: View {
                     
                     Button(action: {
                         if googleCalendarViewModel.isConnected {
-                            // If already connected, trigger calendar import
                             importGoogleCalendar()
                         } else {
-                            // If not connected, start the connection process
                             connectGoogleCalendar()
                         }
                     }) {
